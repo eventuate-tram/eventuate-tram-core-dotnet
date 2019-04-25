@@ -1,0 +1,5 @@
+﻿FROM microsoft/mssql-tools:latest
+WORKDIR /scripts
+COPY ./TestDatabase/* ./
+RUN chmod +x ./entrypoint.sh
+CMD ./entrypoint.sh
