@@ -193,13 +193,6 @@ to execute all the operations in the transaction as a retriable unit.
 Also, note that if EnableRetryOnFailure is configured, your handler may get called multiple times if there is a 
 transient failure that causes a retry to occur.
 
-### Troubleshooting
-
-If you are using this library on OSX, you may get an exception similar to "System.DllNotFoundException: Failed to 
-load the librdkafka native library". See issue https://github.com/confluentinc/confluent-kafka-dotnet/issues/778 
-for more information and a work-around. This should be resolved in the final version of Confluent.Kafka 1.0.0 
-(currently we are using 1.0.0-beta3).
-
 ## Running Integration Tests
 
 ### Services Required

@@ -70,7 +70,7 @@ namespace IO.Eventuate.Tram.Messaging.Consumer.Kafka
 			}
 		}
 
-		private void MaybeCommitOffsets(Consumer<string, string> consumer, KafkaMessageProcessor processor)
+		private void MaybeCommitOffsets(IConsumer<string, string> consumer, KafkaMessageProcessor processor)
 		{
 			var logContext = $"{nameof(MaybeCommitOffsets)} for SubscriberId='{_subscriberId}'";
 			List<TopicPartitionOffset> offsetsToCommit = processor.OffsetsToCommit().ToList();
@@ -88,11 +88,11 @@ namespace IO.Eventuate.Tram.Messaging.Consumer.Kafka
 			var logContext = $"{nameof(Start)} for SubscriberId={_subscriberId}";
 			try
 			{
-				Consumer<string, string> consumer = new ConsumerBuilder<string, string>(_consumerProperties).Build();
+				IConsumer<string, string> consumer = new ConsumerBuilder<string, string>(_consumerProperties).Build();
 				var processor = new KafkaMessageProcessor(_subscriberId, _handler,
 					_loggerFactory.CreateLogger<KafkaMessageProcessor>());
 
-				using (var adminClient = new AdminClient(consumer.Handle))
+				using (IAdminClient adminClient = new DependentAdminClientBuilder(consumer.Handle).Build())
 				{
 					foreach (string topic in _topics)
 					{
