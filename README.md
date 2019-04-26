@@ -219,7 +219,7 @@ $ docker-compose up -d cdcservice2
 $ docker-compose up eventuatetramtests
 ```
 
-Test results will be written to ./bin/Release/netcoreapp2.1/publish/TestResults.
+Test results will be written to ./bin/Release/netcoreapp2.2/publish/TestResults.
 
 ### Environment Variable Configuration
 
