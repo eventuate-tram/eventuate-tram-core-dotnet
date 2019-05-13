@@ -8,10 +8,12 @@ namespace IO.Eventuate.Tram
 	{
 		public static readonly JsonSerializerSettings JsonSerializerSettings = new JsonSerializerSettings
 		{
-			ContractResolver = new CamelCasePropertyNamesContractResolver
+			// Don't use CamelCasePropertyNamesContractResolver
+			// The CamelCasePropertyNamesContractResolver uses an internal cache that is shared between instances,
+			// so sometimes dictionary keys were getting camel cased if the wrong settings got cached.
+			ContractResolver = new DefaultContractResolver
 			{
-				// Prevent Header dictionary keys from being camel cased
-				NamingStrategy = {ProcessDictionaryKeys = false}
+				NamingStrategy = new CamelCaseNamingStrategy()
 			},
 			MissingMemberHandling = MissingMemberHandling.Ignore,
 			NullValueHandling = NullValueHandling.Ignore
