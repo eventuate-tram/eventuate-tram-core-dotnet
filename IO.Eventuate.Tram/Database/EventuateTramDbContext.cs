@@ -60,16 +60,16 @@ namespace IO.Eventuate.Tram.Database
 
 			builder.HasKey(m => m.Id);
 
-			builder.Property(m => m.Id).HasColumnType("varchar(450)");
+			builder.Property(m => m.Id).HasColumnType("varchar(450)").HasColumnName("id");
 
-			builder.Property(m => m.Destination).HasMaxLength(1000).IsRequired();
+			builder.Property(m => m.Destination).HasMaxLength(1000).IsRequired().HasColumnName("destination");
 
-			builder.Property(m => m.Headers).HasMaxLength(1000).IsRequired();
+			builder.Property(m => m.Headers).HasMaxLength(1000).IsRequired().HasColumnName("headers");
 
-			builder.Property(m => m.Payload).IsRequired();
+			builder.Property(m => m.Payload).IsRequired().HasColumnName("payload");
 
 			builder.Property(m => m.Published)
-				.HasDefaultValue((short?)0).IsRequired(false);
+				.HasDefaultValue((short?)0).IsRequired(false).HasColumnName("published");
 
 			builder.Property(m => m.CreationTime).HasColumnName("creation_time")
 				.HasDefaultValueSql(CurrentTimeInMillisecondsSqlExpression).IsRequired(false);
