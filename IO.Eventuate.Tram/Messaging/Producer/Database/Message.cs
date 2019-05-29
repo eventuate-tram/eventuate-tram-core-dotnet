@@ -21,7 +21,7 @@ namespace IO.Eventuate.Tram.Messaging.Producer.Database
 		public string Destination { get; set; }
 		public string Headers { get; set; }
 		public string Payload { get; set; }
-		public short Published { get; set; }
-		public long CreationTime { get; set; }
+		public short? Published { get; set; }
+		public long? CreationTime { get; set; }
 	}
 }

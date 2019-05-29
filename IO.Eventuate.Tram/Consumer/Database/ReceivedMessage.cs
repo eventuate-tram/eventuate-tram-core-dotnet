@@ -4,6 +4,6 @@ namespace IO.Eventuate.Tram.Consumer.Database
 	{
 		public string ConsumerId { get; set; }
 		public string MessageId { get; set; }
-		public long CreationTime { get; set; }
+		public long? CreationTime { get; set; }
 	}
 }

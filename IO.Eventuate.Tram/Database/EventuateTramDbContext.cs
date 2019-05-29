@@ -69,7 +69,7 @@ namespace IO.Eventuate.Tram.Database
 			builder.Property(m => m.Payload).IsRequired();
 
 			builder.Property(m => m.Published)
-				.HasDefaultValue(0).IsRequired(false);
+				.HasDefaultValue((short?)0).IsRequired(false);
 
 			builder.Property(m => m.CreationTime).HasColumnName("creation_time")
 				.HasDefaultValueSql(CurrentTimeInMillisecondsSqlExpression).IsRequired(false);
