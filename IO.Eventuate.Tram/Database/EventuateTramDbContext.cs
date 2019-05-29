@@ -60,7 +60,7 @@ namespace IO.Eventuate.Tram.Database
 
 			builder.HasKey(m => m.Id);
 
-			builder.Property(m => m.Id).HasColumnType("VARCHAR").HasMaxLength(767);
+			builder.Property(m => m.Id).HasColumnType("varchar(450)");
 
 			builder.Property(m => m.Destination).HasMaxLength(1000).IsRequired();
 
@@ -69,10 +69,10 @@ namespace IO.Eventuate.Tram.Database
 			builder.Property(m => m.Payload).IsRequired();
 
 			builder.Property(m => m.Published)
-				.HasDefaultValue(0);
+				.HasDefaultValue(0).IsRequired(false);
 
 			builder.Property(m => m.CreationTime).HasColumnName("creation_time")
-				.HasDefaultValueSql(CurrentTimeInMillisecondsSqlExpression);
+				.HasDefaultValueSql(CurrentTimeInMillisecondsSqlExpression).IsRequired(false);
 		}
 		
 		private void ConfigureReceivedMessage(EntityTypeBuilder<ReceivedMessage> builder)
@@ -81,14 +81,14 @@ namespace IO.Eventuate.Tram.Database
 
 			builder.HasKey(rm => new {rm.ConsumerId, rm.MessageId});
 
-			builder.Property(rm => rm.ConsumerId).HasColumnType("VARCHAR").HasMaxLength(767)
+			builder.Property(rm => rm.ConsumerId).HasColumnType("varchar(450)")
 				.HasColumnName("consumer_id").IsRequired();
 
-			builder.Property(rm => rm.MessageId).HasColumnType("VARCHAR").HasMaxLength(767).HasColumnName("message_id")
+			builder.Property(rm => rm.MessageId).HasColumnType("varchar(450)").HasColumnName("message_id")
 				.IsRequired();
 
 			builder.Property(m => m.CreationTime).HasColumnName("creation_time")
-				.HasDefaultValueSql(CurrentTimeInMillisecondsSqlExpression);
+				.HasDefaultValueSql(CurrentTimeInMillisecondsSqlExpression).IsRequired(false);
 		}
 	}
 }
