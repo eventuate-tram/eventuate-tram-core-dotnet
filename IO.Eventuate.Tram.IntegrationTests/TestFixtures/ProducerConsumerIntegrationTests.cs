@@ -232,7 +232,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
         }
 
         [Test]
-        public void Publish_SubscriberThrowsExceptionOn1OfMultipleMessages_AllMessagesHandled()
+        public void Publish_SubscriberThrowsExceptionOnFirstOfMultipleMessages_MessagesHandlingStops()
         {
             // Arrange
             TestMessageType1 badmsg1 = new TestMessageType1("ThrowException", 1, 1.2);
@@ -264,13 +264,13 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
 			Assert.That(GetDbContext().Messages.Count(msg => msg.Published == 0), 
 				Is.EqualTo(0), "Number of unpublished messages");
 			Assert.That(GetDbContext().ReceivedMessages.Count(msg => msg.MessageId != null), 
-				Is.EqualTo(3), "Number of received messages");
+				Is.EqualTo(0), "Number of received messages");
 			Assert.That(consumer.TotalMessageCount(), 
-				Is.EqualTo(3), "Total number of messages received by consumer");
+				Is.EqualTo(1), "Total number of messages received by consumer");
 	        Assert.That(consumer.Type1MessageCount,
 		        Is.EqualTo(1), "Number of Type 1 messages received by consumer");
 			Assert.That(consumer.Type2MessageCount,
-		        Is.EqualTo(2), "Number of Type 2 messages received by consumer");
+		        Is.EqualTo(0), "Number of Type 2 messages received by consumer");
         }
 
 	    [Test]
