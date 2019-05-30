@@ -28,6 +28,7 @@ namespace IO.Eventuate.Tram.Consumer.Common
 				catch (Exception e)
 				{
 					PostHandle(subscriberId, message, e);
+					throw;
 				}
 			};
 
