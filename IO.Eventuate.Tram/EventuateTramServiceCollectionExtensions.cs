@@ -77,11 +77,10 @@ namespace IO.Eventuate.Tram
 			{
 				var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
 				var serviceScopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
-				IEnumerable<IMessageInterceptor> messageInterceptors = provider.GetServices<IMessageInterceptor>();
 				var decoratedMessageHandlerFactory = provider.GetRequiredService<DecoratedMessageHandlerFactory>(); 
 
 				IMessageConsumer messageConsumer = new KafkaMessageConsumer(bootstrapServers,
-					consumerConfigurationProperties, messageInterceptors, decoratedMessageHandlerFactory,
+					consumerConfigurationProperties, decoratedMessageHandlerFactory,
 					loggerFactory, serviceScopeFactory);
 
 				return messageConsumer;

@@ -21,7 +21,6 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 	{
 		private readonly ILogger _logger;
 		private readonly EventuateKafkaConsumerConfigurationProperties _eventuateKafkaConsumerConfigurationProperties;
-		private readonly IEnumerable<IMessageInterceptor> _messageInterceptors;
 		private readonly DecoratedMessageHandlerFactory _decoratedMessageHandlerFactory;
 		private readonly ILoggerFactory _loggerFactory;
 		private readonly IServiceScopeFactory _serviceScopeFactory;
@@ -32,13 +31,11 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 
 		public KafkaMessageConsumer(string bootstrapServers,
 			EventuateKafkaConsumerConfigurationProperties eventuateKafkaConsumerConfigurationProperties,
-			IEnumerable<IMessageInterceptor> messageInterceptors,
 			DecoratedMessageHandlerFactory decoratedMessageHandlerFactory, ILoggerFactory loggerFactory,
 			IServiceScopeFactory serviceScopeFactory)
 		{
 			_bootstrapServers = bootstrapServers;
 			_eventuateKafkaConsumerConfigurationProperties = eventuateKafkaConsumerConfigurationProperties;
-			_messageInterceptors = messageInterceptors;
 			_decoratedMessageHandlerFactory = decoratedMessageHandlerFactory;
 			_loggerFactory = loggerFactory;
 			_serviceScopeFactory = serviceScopeFactory;
