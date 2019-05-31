@@ -30,10 +30,9 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             TestEventConsumer consumer = GetTestConsumer();
 
             // Act
-            GetTestPublisher().Publish(AggregateType, AggregateType, new List<IDomainEvent> { msg1 });
             Assert.Throws<DbUpdateException>(delegate ()
             {
-                GetDbContext().SaveChanges();
+                GetTestPublisher().Publish(AggregateType, AggregateType, new List<IDomainEvent> { msg1 });
             });
         }
     }

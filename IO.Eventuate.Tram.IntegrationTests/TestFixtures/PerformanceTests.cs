@@ -37,7 +37,6 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             for (int x = 0; x < 1000; x++)
             {
                 GetTestPublisher().Publish(AggregateType, AggregateType, new List<IDomainEvent> { msg1 });
-                GetDbContext().SaveChanges();
             }
 
             // Allow time for messages to process

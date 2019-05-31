@@ -43,7 +43,6 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
 
             // Act
             GetTestPublisher().Publish(AggregateType, AggregateType, new List<IDomainEvent> { msg1 });
-            GetDbContext().SaveChanges();
 
             // Allow time for messages to process
             int count = 10;
@@ -80,7 +79,6 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
 
             // Act
             GetTestPublisher().Publish(AggregateType, AggregateType, new List<IDomainEvent> { msg2 });
-            GetDbContext().SaveChanges();
 
             // Allow time for messages to process
             int count = 10;
@@ -119,9 +117,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
 
             // Act
             GetTestPublisher().Publish(AggregateType, AggregateType, new List<IDomainEvent> { msg1 });
-            GetDbContext().SaveChanges();
             GetTestPublisher().Publish(AggregateType, AggregateType, new List<IDomainEvent> { msg2 });
-            GetDbContext().SaveChanges();
 
             // Allow time for messages to process
             int count = 10;
@@ -166,10 +162,8 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
 
             // Act
             GetTestPublisher().Publish(AggregateType, AggregateType, new List<IDomainEvent> { msg3 });
-            GetDbContext().SaveChanges();
             // Send a following message to identify when we're done
             GetTestPublisher().Publish(AggregateType, AggregateType, new List<IDomainEvent> { msg1 });
-            GetDbContext().SaveChanges();
 
             // Allow time for messages to process
             int count = 10;
@@ -203,11 +197,9 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
 
             // Act
             GetTestPublisher().Publish("BadTopic", "BadTopic", new List<IDomainEvent> { msg1 });
-            GetDbContext().SaveChanges();
             // Send a following message to identify when we're done
             GetTestPublisher().Publish(AggregateType, AggregateType, new List<IDomainEvent> { msg1 });
-            GetDbContext().SaveChanges();
-
+ 
             // Allow time for messages to process
             int count = 10;
             while (consumer.Type1MessageCount < 1 && count > 0)
@@ -242,11 +234,8 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
 
             // Act
             GetTestPublisher().Publish(AggregateType, AggregateType, new List<IDomainEvent> { badmsg1 });
-            GetDbContext().SaveChanges();
             GetTestPublisher().Publish(AggregateType, AggregateType, new List<IDomainEvent> { msg2a });
-            GetDbContext().SaveChanges();
             GetTestPublisher().Publish(AggregateType, AggregateType, new List<IDomainEvent> { msg2b });
-            GetDbContext().SaveChanges();
 
             // Allow time for messages to process
             int count = 10;
@@ -282,7 +271,6 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
 
 		    // Act
 		    GetTestPublisher().Publish(AggregateType, AggregateType, new List<IDomainEvent> { msg1 });
-		    GetDbContext().SaveChanges();
 
 		    // Allow time for messages to process
 		    int count = 10;
@@ -322,7 +310,6 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
 
 		    // Act
 		    GetTestPublisher().Publish(AggregateType, AggregateType, new List<IDomainEvent> { msg2 });
-		    GetDbContext().SaveChanges();
 
 		    // Allow time for messages to process
 		    int count = 10;
