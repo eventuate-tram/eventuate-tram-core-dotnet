@@ -49,7 +49,7 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 			                 $"handler='{handler.Method.Name}'";
 			_logger.LogDebug($"+{logContext}");
 			
-			Action<SubscriberIdAndMessage> decoratedHandler = _decoratedMessageHandlerFactory.Decorate(handler);
+			Action<SubscriberIdAndMessage, IServiceProvider> decoratedHandler = _decoratedMessageHandlerFactory.Decorate(handler);
 			
 			var swimLaneBasedDispatcher = new SwimlaneBasedDispatcher(subscriberId, _loggerFactory);
 
@@ -76,13 +76,18 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 			});
 		}
 
-		public static void Handle(IMessage message, Action<Exception> completionCallback, string subscriberId,
-			Action<SubscriberIdAndMessage> decoratedHandler)
+		public void Handle(IMessage message, Action<Exception> completionCallback, string subscriberId,
+			Action<SubscriberIdAndMessage, IServiceProvider> decoratedHandler)
 		{
 			try
 			{
-				decoratedHandler(new SubscriberIdAndMessage(subscriberId, message));
-				completionCallback(null);
+				// Creating a service scope and passing the scope's service provider to handlers
+				// so they can resolve scoped services
+				using (IServiceScope scope = _serviceScopeFactory.CreateScope())
+				{
+					decoratedHandler(new SubscriberIdAndMessage(subscriberId, message), scope.ServiceProvider);
+					completionCallback(null);
+				}
 			}
 			catch (Exception e)
 			{

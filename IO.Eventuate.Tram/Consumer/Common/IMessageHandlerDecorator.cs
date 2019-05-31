@@ -4,6 +4,6 @@ namespace IO.Eventuate.Tram.Consumer.Common
 {
 	public interface IMessageHandlerDecorator
 	{
-		Action<SubscriberIdAndMessage, IMessageHandlerDecoratorChain> Accept { get; }
+		Action<SubscriberIdAndMessage, IServiceProvider, IMessageHandlerDecoratorChain> Accept { get; }
 	}
 }

@@ -32,13 +32,13 @@ namespace IO.Eventuate.Tram.Consumer.Common
 			return this;
 		}
 
-		public IMessageHandlerDecoratorChain AndFinally(Action<SubscriberIdAndMessage> consumer)
+		public IMessageHandlerDecoratorChain AndFinally(Action<SubscriberIdAndMessage, IServiceProvider> consumer)
 		{
 			return BuildChain(_handlers.First, consumer);
 		}
 
 		private static IMessageHandlerDecoratorChain BuildChain(LinkedListNode<IMessageHandlerDecorator> handlersHead,
-			Action<SubscriberIdAndMessage> consumer)
+			Action<SubscriberIdAndMessage, IServiceProvider> consumer)
 		{
 			if (handlersHead == null)
 			{
@@ -47,23 +47,23 @@ namespace IO.Eventuate.Tram.Consumer.Common
 			else
 			{
 				LinkedListNode<IMessageHandlerDecorator> tail = handlersHead.Next;
-				return new MessageHandlerDecoratorChain(subscriberIdAndMessage =>
-					handlersHead.Value.Accept(subscriberIdAndMessage, BuildChain(tail, consumer)));
+				return new MessageHandlerDecoratorChain((subscriberIdAndMessage, serviceProvider) =>
+					handlersHead.Value.Accept(subscriberIdAndMessage, serviceProvider, BuildChain(tail, consumer)));
 			}
 		}
 
 		private class MessageHandlerDecoratorChain : IMessageHandlerDecoratorChain
 		{
-			private readonly Action<SubscriberIdAndMessage> _action;
+			private readonly Action<SubscriberIdAndMessage, IServiceProvider> _action;
 
-			public MessageHandlerDecoratorChain(Action<SubscriberIdAndMessage> action)
+			public MessageHandlerDecoratorChain(Action<SubscriberIdAndMessage, IServiceProvider> action)
 			{
 				_action = action;
 			}
 			
-			public void InvokeNext(SubscriberIdAndMessage subscriberIdAndMessage)
+			public void InvokeNext(SubscriberIdAndMessage subscriberIdAndMessage, IServiceProvider serviceProvider)
 			{
-				_action(subscriberIdAndMessage);
+				_action(subscriberIdAndMessage, serviceProvider);
 			}
 		}
 	}

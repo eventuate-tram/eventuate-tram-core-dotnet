@@ -15,14 +15,14 @@ namespace IO.Eventuate.Tram.Consumer.Common
 			_messageInterceptors = messageInterceptors.ToArray();
 		}
 
-		public Action<SubscriberIdAndMessage, IMessageHandlerDecoratorChain> Accept =>
-			(subscriberIdAndMessage, messageHandlerDecoratorChain) =>
+		public Action<SubscriberIdAndMessage, IServiceProvider, IMessageHandlerDecoratorChain> Accept =>
+			(subscriberIdAndMessage, serviceProvider, messageHandlerDecoratorChain) =>
 			{
 				IMessage message = subscriberIdAndMessage.Message;
 				PreReceive(message);
 				try
 				{
-					messageHandlerDecoratorChain.InvokeNext(subscriberIdAndMessage);
+					messageHandlerDecoratorChain.InvokeNext(subscriberIdAndMessage, serviceProvider);
 				}
 				finally
 				{

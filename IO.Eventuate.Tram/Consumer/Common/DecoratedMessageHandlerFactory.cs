@@ -19,7 +19,7 @@ namespace IO.Eventuate.Tram.Consumer.Common
 			_logger = logger;
 		}
 
-		public Action<SubscriberIdAndMessage> Decorate(MessageHandler mh) {
+		public Action<SubscriberIdAndMessage, IServiceProvider> Decorate(MessageHandler mh) {
 			MessageHandlerDecoratorChainBuilder builder = MessageHandlerDecoratorChainBuilder.StartingWith(_decorators[0]);
 
 			foreach (IMessageHandlerDecorator mhd in _decorators.Skip(1))
@@ -27,21 +27,19 @@ namespace IO.Eventuate.Tram.Consumer.Common
 				builder = builder.AndThen(mhd);
 			}
 
-			IMessageHandlerDecoratorChain chain = builder.AndFinally((smh) => {
+			IMessageHandlerDecoratorChain chain = builder.AndFinally((smh, serviceProvider) => {
 				String subscriberId = smh.SubscriberId;
 				IMessage message = smh.Message;
 				try {
 					_logger.LogTrace($"Invoking handler {subscriberId} {message.Id}");
-					// TODO: Pass in scoped service provider
-					
-					mh(smh.Message, null);
+					mh(smh.Message, serviceProvider);
 					_logger.LogTrace($"handled message {subscriberId} {message.Id}");
 				} catch (Exception e) {
 					_logger.LogTrace($"Got exception {subscriberId} {message.Id}: {e}");
 					throw;
 				}
 			});
-			return subscriberIdAndMessage => chain.InvokeNext(subscriberIdAndMessage);
+			return (subscriberIdAndMessage, serviceProvider) => chain.InvokeNext(subscriberIdAndMessage, serviceProvider);
 		}
 	}
 }
