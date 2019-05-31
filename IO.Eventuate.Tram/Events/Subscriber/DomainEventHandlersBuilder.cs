@@ -27,9 +27,19 @@ namespace IO.Eventuate.Tram.Events.Subscriber
 			return new DomainEventHandlersBuilder(aggregateType);
 		}
 
-		public DomainEventHandlersBuilder OnEvent<TEvent>(Action<IDomainEventEnvelope<TEvent>> handler) where TEvent : IDomainEvent
+		public DomainEventHandlersBuilder OnEvent<TEvent>(Action<IDomainEventEnvelope<TEvent>> handler)
+			where TEvent : IDomainEvent
 		{
-			_handlers.Add(new DomainEventHandler(_aggregateType, typeof(TEvent), (e, p) => handler((IDomainEventEnvelope<TEvent>) e)));
+			_handlers.Add(new DomainEventHandler(_aggregateType, typeof(TEvent),
+				(e, p) => handler((IDomainEventEnvelope<TEvent>) e)));
+			return this;
+		}
+
+		public DomainEventHandlersBuilder OnEvent<TEvent>(
+			Action<IDomainEventEnvelope<TEvent>, IServiceProvider> handler) where TEvent : IDomainEvent
+		{
+			_handlers.Add(new DomainEventHandler(_aggregateType, typeof(TEvent),
+				(e, p) => handler((IDomainEventEnvelope<TEvent>) e, p)));
 			return this;
 		}
 
