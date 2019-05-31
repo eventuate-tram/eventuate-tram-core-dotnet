@@ -19,7 +19,7 @@ namespace IO.Eventuate.Tram.Consumer.Common
 			_logger = logger;
 		}
 
-		public Action<SubscriberIdAndMessage, IServiceProvider> Decorate(MessageHandler mh) {
+		public Action<SubscriberIdAndMessage, IServiceProvider> Decorate(MessageHandler messageHandler) {
 			MessageHandlerDecoratorChainBuilder builder = MessageHandlerDecoratorChainBuilder.StartingWith(_decorators[0]);
 
 			foreach (IMessageHandlerDecorator mhd in _decorators.Skip(1))
@@ -32,7 +32,7 @@ namespace IO.Eventuate.Tram.Consumer.Common
 				IMessage message = smh.Message;
 				try {
 					_logger.LogTrace($"Invoking handler {subscriberId} {message.Id}");
-					mh(smh.Message, serviceProvider);
+					messageHandler(smh.Message, serviceProvider);
 					_logger.LogTrace($"handled message {subscriberId} {message.Id}");
 				} catch (Exception e) {
 					_logger.LogTrace($"Got exception {subscriberId} {message.Id}: {e}");
