@@ -65,9 +65,7 @@ namespace IO.Eventuate.Tram.Messaging.Producer.Database
 			// Relies on database column default value to set creation_time
 			var messageEntity = new Message(message);
 			_eventuateTramDbContext.Messages.Add(messageEntity);
-			// Don't save changes on _eventuateTramDbContext here so that the application can have more
-			// control over when the save happens (within a transaction with other DbContext changes, etc.)
-			// TODO: should we call _eventuateTramDbContext.SaveChanges() here to be consistent with Java version?
+			_eventuateTramDbContext.SaveChanges();
 		}
 	}
 }
