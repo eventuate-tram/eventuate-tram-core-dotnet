@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using IO.Eventuate.Tram.Consumer.Common;
 using IO.Eventuate.Tram.Consumer.Database;
 using IO.Eventuate.Tram.Consumer.Kafka;
@@ -8,10 +7,10 @@ using IO.Eventuate.Tram.Events.Common;
 using IO.Eventuate.Tram.Events.Publisher;
 using IO.Eventuate.Tram.Events.Subscriber;
 using IO.Eventuate.Tram.Local.Kafka.Consumer;
-using IO.Eventuate.Tram.Messaging.Common;
 using IO.Eventuate.Tram.Messaging.Consumer;
 using IO.Eventuate.Tram.Messaging.Producer;
 using IO.Eventuate.Tram.Messaging.Producer.Database;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -21,11 +20,12 @@ namespace IO.Eventuate.Tram
 	public static class EventuateTramServiceCollectionExtensions
 	{
 		public static void AddEventuateTramSqlKafkaTransport(this IServiceCollection serviceCollection,
-			string eventuateDatabaseSchema, string bootstrapServers, EventuateKafkaConsumerConfigurationProperties consumerConfigurationProperties)
+			string eventuateDatabaseSchema, string bootstrapServers, EventuateKafkaConsumerConfigurationProperties consumerConfigurationProperties,
+			Action<IServiceProvider, DbContextOptionsBuilder> dbContextOptionsAction)
 		{
-			AddEventuateTramSqlProducer(serviceCollection, eventuateDatabaseSchema);
+			AddEventuateTramSqlProducer(serviceCollection, eventuateDatabaseSchema, dbContextOptionsAction);
 			AddEventuateTramKafkaConsumer(serviceCollection, eventuateDatabaseSchema, bootstrapServers,
-				consumerConfigurationProperties);
+				consumerConfigurationProperties, dbContextOptionsAction);
 		}
 
 		public static void AddEventuateTramEventsPublisher(this IServiceCollection serviceCollection)
@@ -53,24 +53,33 @@ namespace IO.Eventuate.Tram
 		}
 
 		public static void AddEventuateTramSqlProducer(this IServiceCollection serviceCollection,
-			string eventuateDatabaseSchema)
+			string eventuateDatabaseSchema, Action<IServiceProvider, DbContextOptionsBuilder> dbContextOptionsAction)
 		{
-			AddEventuateTramCommonSqlMessagingServices(serviceCollection, eventuateDatabaseSchema);
+			AddEventuateTramCommonSqlMessagingServices(serviceCollection, eventuateDatabaseSchema, dbContextOptionsAction);
 			serviceCollection.TryAddSingleton<IIdGenerator, IdGenerator>();
 			serviceCollection.TryAddScoped<IMessageProducer, DatabaseMessageProducer>();
 		}
 
 		private static void AddEventuateTramCommonSqlMessagingServices(
-			this IServiceCollection serviceCollection, string eventuateDatabaseSchema)
+			this IServiceCollection serviceCollection, string eventuateDatabaseSchema,
+			Action<IServiceProvider, DbContextOptionsBuilder> dbContextOptionsAction)
 		{
 			serviceCollection.TryAddSingleton(provider => new EventuateSchema(eventuateDatabaseSchema));
+			serviceCollection.TryAddScoped<IEventuateTramDbContextProvider>(provider =>
+			{
+				var eventuateSchema = provider.GetRequiredService<EventuateSchema>();
+				var builder = new DbContextOptionsBuilder<EventuateTramDbContext>();
+				dbContextOptionsAction(provider, builder);
+				return new EventuateTramDbContextProvider(builder.Options, eventuateSchema);
+			});
 		}
 
 		public static void AddEventuateTramKafkaConsumer(this IServiceCollection serviceCollection,
 			string eventuateDatabaseSchema, string bootstrapServers,
-			EventuateKafkaConsumerConfigurationProperties consumerConfigurationProperties)
+			EventuateKafkaConsumerConfigurationProperties consumerConfigurationProperties,
+			Action<IServiceProvider, DbContextOptionsBuilder> dbContextOptionsAction)
 		{
-			AddEventuateTramCommonSqlMessagingServices(serviceCollection, eventuateDatabaseSchema);
+			AddEventuateTramCommonSqlMessagingServices(serviceCollection, eventuateDatabaseSchema, dbContextOptionsAction);
 			AddEventuateTramCommonConsumer(serviceCollection);
 			serviceCollection.TryAddScoped<IDuplicateMessageDetector, SqlTableBasedDuplicateMessageDetector>();
 			serviceCollection.TryAddSingleton(provider =>

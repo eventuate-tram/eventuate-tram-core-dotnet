@@ -21,7 +21,8 @@ namespace IO.Eventuate.Tram.Messaging.Producer.Database
 	public class DatabaseMessageProducer : AbstractMessageProducer, IMessageProducer, IMessageSender
 	{
 		private readonly IIdGenerator _idGenerator;
-		private readonly EventuateTramDbContext _eventuateTramDbContext;
+
+		private readonly IEventuateTramDbContextProvider _dbContextProvider;
 
 		/// <summary>
 		/// Construct an OutboxMessageProducer
@@ -29,16 +30,15 @@ namespace IO.Eventuate.Tram.Messaging.Producer.Database
 		/// <param name="messageInterceptors">Collection of intercepts applied before and
 		/// after sending the message to outbox</param>
 		/// <param name="idGenerator">Function to use for generating keys</param>
-		/// <param name="eventuateTramDbContext">Database context that provides
-		/// persistence for the outbox</param>
+		/// <param name="dbContextProvider">DbContext provider used to provide persistence to the outbox</param>
 		/// <param name="logger">Logger for diagnostic messages</param>
 		public DatabaseMessageProducer(IEnumerable<IMessageInterceptor> messageInterceptors,
-			IIdGenerator idGenerator, EventuateTramDbContext eventuateTramDbContext,
+			IIdGenerator idGenerator, IEventuateTramDbContextProvider dbContextProvider,
 			ILogger<DatabaseMessageProducer> logger)
 			: base(messageInterceptors, logger)
 		{
 			_idGenerator = idGenerator;
-			_eventuateTramDbContext = eventuateTramDbContext;
+			_dbContextProvider = dbContextProvider;
 		}
 		
 		/// <summary>
@@ -64,8 +64,11 @@ namespace IO.Eventuate.Tram.Messaging.Producer.Database
 		{
 			// Relies on database column default value to set creation_time
 			var messageEntity = new Message(message);
-			_eventuateTramDbContext.Messages.Add(messageEntity);
-			_eventuateTramDbContext.SaveChanges();
+			using (EventuateTramDbContext dbContext = _dbContextProvider.CreateDbContext())
+			{
+				dbContext.Messages.Add(messageEntity);
+				dbContext.SaveChanges();
+			}
 		}
 	}
 }

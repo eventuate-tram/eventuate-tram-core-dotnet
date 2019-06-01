@@ -4,20 +4,19 @@ using System.Transactions;
 using IO.Eventuate.Tram.Consumer.Common;
 using IO.Eventuate.Tram.Database;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 
 namespace IO.Eventuate.Tram.Consumer.Database
 {
 	public class SqlTableBasedDuplicateMessageDetector : IDuplicateMessageDetector
 	{
-		private readonly EventuateTramDbContext _dbContext;
+		private readonly IEventuateTramDbContextProvider _dbContextProvider;
 		private readonly ILogger<SqlTableBasedDuplicateMessageDetector> _logger;
 
-		public SqlTableBasedDuplicateMessageDetector(EventuateTramDbContext dbContext,
+		public SqlTableBasedDuplicateMessageDetector(IEventuateTramDbContextProvider dbContextProvider, 
 			ILogger<SqlTableBasedDuplicateMessageDetector> logger)
 		{
-			_dbContext = dbContext;
+			_dbContextProvider = dbContextProvider;
 			_logger = logger;
 		}
 
@@ -28,9 +27,14 @@ namespace IO.Eventuate.Tram.Consumer.Database
 			try
 			{
 				_logger.LogDebug($"+{logContext}");
-				// Relies on database column default value to set creation_time
-				_dbContext.ReceivedMessages.Add(new ReceivedMessage {ConsumerId = consumerId, MessageId = messageId});
-				_dbContext.SaveChanges();
+				using (EventuateTramDbContext dbContext = _dbContextProvider.CreateDbContext())
+				{
+					// Relies on database column default value to set creation_time
+					dbContext.ReceivedMessages.Add(new ReceivedMessage
+						{ConsumerId = consumerId, MessageId = messageId});
+					dbContext.SaveChanges();
+				}
+
 				_logger.LogDebug($"-{logContext}");
 
 				return false;
@@ -56,35 +60,30 @@ namespace IO.Eventuate.Tram.Consumer.Database
 			                    $"for {nameof(SubscriberIdAndMessage.SubscriberId)}='{subscriberIdAndMessage.SubscriberId}', " +
 			                    $"MessageId='{subscriberIdAndMessage.Message.Id}'";
 
-			//TODO: Do we need this strategy. Is the callback going to get called again on a retry?
-			IExecutionStrategy strategy = _dbContext.Database.CreateExecutionStrategy();
-			strategy.Execute(() =>
+			using (var transactionScope = new TransactionScope())
 			{
-				using (var transactionScope = new TransactionScope())
+				try
 				{
-					try
+					if (IsDuplicate(subscriberIdAndMessage.SubscriberId,
+						subscriberIdAndMessage.Message.Id))
 					{
-						if (IsDuplicate(subscriberIdAndMessage.SubscriberId,
-							subscriberIdAndMessage.Message.Id))
-						{
-							_logger.LogDebug($"{logContext}: message is a duplicate");
-						}
-						else
-						{
-							_logger.LogDebug($"{logContext}: Invoking handlers");
-							callback();
-						}
+						_logger.LogDebug($"{logContext}: message is a duplicate");
+					}
+					else
+					{
+						_logger.LogDebug($"{logContext}: Invoking handlers");
+						callback();
+					}
 
-						transactionScope.Complete();
-						_logger.LogDebug($"{logContext}: Processed message");
-					}
-					catch (Exception e)
-					{
-						_logger.LogError(e, $"{logContext}: Exception processing message {e}");
-						throw;
-					}
+					transactionScope.Complete();
+					_logger.LogDebug($"{logContext}: Processed message");
 				}
-			});
+				catch (Exception e)
+				{
+					_logger.LogError(e, $"{logContext}: Exception processing message {e}");
+					throw;
+				}
+			}
 		}
 	}
 }

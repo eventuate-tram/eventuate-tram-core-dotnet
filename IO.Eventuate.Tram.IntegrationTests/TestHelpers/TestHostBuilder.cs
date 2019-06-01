@@ -67,7 +67,11 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers
                     {
                         o.UseSqlServer(_sqlConnectionString);
                     });
-                    services.AddEventuateTramSqlKafkaTransport(_eventuateDatabaseSchemaName, _kafkaBootstrapServers, EventuateKafkaConsumerConfigurationProperties.Empty());
+                    services.AddEventuateTramSqlKafkaTransport(_eventuateDatabaseSchemaName, _kafkaBootstrapServers, EventuateKafkaConsumerConfigurationProperties.Empty(),
+                        (provider, o) =>
+                        {
+                            o.UseSqlServer(_sqlConnectionString);
+                        });
                     if (withInterceptor)
                     {
                         services.AddSingleton<IMessageInterceptor>(new TestMessageInterceptor());
