@@ -73,6 +73,8 @@ namespace IO.Eventuate.Tram.Database
 
 			builder.Property(m => m.CreationTime).HasColumnName("creation_time")
 				.HasDefaultValueSql(CurrentTimeInMillisecondsSqlExpression).IsRequired(false);
+
+			builder.HasIndex(m => new {m.Published, m.Id});
 		}
 		
 		private void ConfigureReceivedMessage(EntityTypeBuilder<ReceivedMessage> builder)
