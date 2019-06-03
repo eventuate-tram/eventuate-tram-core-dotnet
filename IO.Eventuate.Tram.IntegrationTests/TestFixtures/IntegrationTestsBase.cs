@@ -9,6 +9,7 @@ using IO.Eventuate.Tram.Events.Publisher;
 using IO.Eventuate.Tram.IntegrationTests.TestHelpers;
 using IO.Eventuate.Tram.Local.Kafka.Consumer;
 using IO.Eventuate.Tram.Messaging.Common;
+using IO.Eventuate.Tram.Messaging.Consumer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,15 +28,15 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
         protected TestSettings TestSettings;
 
         // There can only be one of these between all of the tests because there's no good way to tear it down and start again
-        private static IHost _host = null;
-        private static EventuateTramDbContext _dbContext = null;
-        private static IDomainEventPublisher _domainEventPublisher = null;
-        private static TestEventConsumer _testEventConsumer = null;
-        private static TestMessageInterceptor _interceptor = null;
+        private static IHost _host;
+        private static EventuateTramDbContext _dbContext;
+        private static IDomainEventPublisher _domainEventPublisher;
+        private static TestEventConsumer _testEventConsumer;
+        private static TestMessageInterceptor _interceptor;
 
         public IntegrationTestsBase()
         {
-            IConfigurationRoot configuration = null;
+            IConfigurationRoot configuration;
             try
             {
                 IConfigurationBuilder configurationBuilder = new ConfigurationBuilder();
@@ -82,7 +83,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             {
                 using (var admin = new AdminClientBuilder(config).Build())
                 {
-                    await admin.DeleteTopicsAsync(new string[] {AggregateType});
+                    await admin.DeleteTopicsAsync(new[] {AggregateType});
                 }
             }
             catch (DeleteTopicsException e)
@@ -175,6 +176,8 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             if (_host == null)
                 return;
 
+	        var messageConsumer = _host.Services.GetService<IMessageConsumer>();
+	        messageConsumer.Close();
             _host.StopAsync().Wait();
             _host.Dispose();
             _host = null;
