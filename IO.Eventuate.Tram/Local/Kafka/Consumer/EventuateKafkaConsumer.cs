@@ -137,6 +137,10 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 
 									processor.Process(record);
 								}
+								else
+								{
+									processor.ThrowFailureException();
+								}
 
 								MaybeCommitOffsets(consumer, processor);
 							}
@@ -162,7 +166,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 					{
 						_logger.LogError($"{logContext}: Exception - {e}");
 						_state = EventuateKafkaConsumerState.Failed;
-						//TODO: missing throw? Java has a throw here
+						// Java throws here, but seems like it isn't necessary
 					}
 					finally
 					{
@@ -171,7 +175,6 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 						// that all the offsets are ready. Worst case is that there
 						// are messages processed more than once.
 						MaybeCommitOffsets(consumer, processor);
-						consumer.Close();
 						consumer.Dispose();
 						
 						_logger.LogDebug($"{logContext}: Stopped in state {_state.ToString()}");
@@ -186,7 +189,6 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 			}
 		}
 
-		// TODO: Java has a stop method instead of Dispose. Should we do the same?
 		public void Dispose()
 		{
 			var logContext = $"{nameof(Dispose)} for SubscriberId={_subscriberId}";

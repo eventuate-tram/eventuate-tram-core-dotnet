@@ -10,7 +10,7 @@ namespace IO.Eventuate.Tram.Database
 	/// </summary>
 	public class EventuateTramDbContext : DbContext
 	{
-		// TODO: Currently this is MSSQL specific
+		// Note that this is MSSQL specific. It is only used if an entity framework migration is generated for this DbContext
 		private const string CurrentTimeInMillisecondsSqlExpression = "DATEDIFF_BIG(ms, '1970-01-01 00:00:00', GETUTCDATE())";
 		
 		private readonly EventuateSchema _eventuateSchema;

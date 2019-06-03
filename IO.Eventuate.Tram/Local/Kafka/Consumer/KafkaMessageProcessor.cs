@@ -64,7 +64,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 			_logger.LogDebug($"-{logContext}");
 		}
 
-		private void ThrowFailureException()
+		internal void ThrowFailureException()
 		{
 			if (_failed != null)
 			{

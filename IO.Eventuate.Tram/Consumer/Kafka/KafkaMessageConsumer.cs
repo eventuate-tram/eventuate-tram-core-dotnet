@@ -101,14 +101,15 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 			return _id;
 		}
 
-		// TODO: Java added this Close method. Do we still need Dispose?
 		public void Close()
 		{
+			_logger.LogDebug($"+{nameof(Close)}");
 			foreach (EventuateKafkaConsumer consumer in _consumers)
 			{
-				// TODO: Java calls consumer.stop() here
 				consumer.Dispose();
 			}
+			_consumers.Clear();
+			_logger.LogDebug($"-{nameof(Close)}");
 		}
 
 		/// <inheritdoc />
@@ -136,10 +137,7 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 		public void Dispose()
 		{
 			_logger.LogDebug($"+{nameof(Dispose)}");
-			foreach (EventuateKafkaConsumer consumer in _consumers)
-			{
-				consumer.Dispose();
-			}
+			Close();
 			_logger.LogDebug($"-{nameof(Dispose)}");
 		}
 	}
