@@ -112,10 +112,10 @@ namespace IO.Eventuate.Tram
 			long now = TimeNow();
 			if (_currentPeriod != now || _counter == MaxCounter)
 			{
-				_logger.LogInformation($"{logContext}: Need to delay to reset the counter");
 				long oldPeriod = _currentPeriod;
 				while ((_currentPeriod = TimeNow()) <= oldPeriod)
 				{
+					_logger.LogInformation($"{logContext}: Need to delay to reset the counter");
 					// Just do nothing
 					Thread.Sleep(1);
 				}
@@ -123,8 +123,8 @@ namespace IO.Eventuate.Tram
 			}
 
 			Int128 id = MakeId();
-			_counter = _counter + 1;
 			_logger.LogDebug($"-{logContext}: returning id={id}, _counter={_counter}");
+			_counter = _counter + 1;
 			return id;
 		}
 

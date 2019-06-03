@@ -49,7 +49,7 @@ namespace IO.Eventuate.Tram.Messaging.Producer
 
 		protected void SendMessage(string id, string destination, IMessage message, IMessageSender messageSender)
 		{
-			var logContext = $"{nameof(SendMessage)} id='{id}', destination='{destination}', message.Id='{message.Id}'";
+			var logContext = $"{nameof(SendMessage)} id='{id}', destination='{destination}'";
 			Logger.LogDebug($"+{logContext}");
 			if (id == null)
 			{

@@ -48,7 +48,7 @@ namespace IO.Eventuate.Tram.Messaging.Producer.Database
 		/// <param name="message">Message to publish</param>
 		public void Send(string destination, IMessage message)
 		{
-			var logContext = $"{nameof(Send)} destination='{destination}', message.Id={message.Id}";
+			var logContext = $"{nameof(Send)} destination='{destination}'";
 			Logger.LogDebug($"+{logContext}");
 			string id = _idGenerator.GenId().AsString();
 			SendMessage(id, destination, message, this);
