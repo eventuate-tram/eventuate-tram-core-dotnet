@@ -28,7 +28,6 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 		private readonly ConcurrentQueue<ConsumeResult<string, string>> _processedRecords =
 			new ConcurrentQueue<ConsumeResult<string, string>>();
 
-		//TODO: Java uses AtomicReference<KafkaMessageProcessorFailedException> here...
 		private volatile KafkaMessageProcessorFailedException _failed;
 		
 		public KafkaMessageProcessor(string subscriberId,

@@ -35,7 +35,6 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 		private readonly IDictionary<string, string> _consumerProperties;
 		private readonly ILogger _logger;
 
-		//TODO investigate use of volatile
 		private volatile EventuateKafkaConsumerState _state = EventuateKafkaConsumerState.Created;
 		public EventuateKafkaConsumerState State => _state;
 
