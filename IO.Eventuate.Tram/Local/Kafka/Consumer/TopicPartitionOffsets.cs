@@ -59,7 +59,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 		public long? OffsetToCommit()
 		{
 			var logContext = $"TopicPartitionOffset.OffsetToCommit";
-			_logger.LogDebug($"+{logContext}");
+			_logger.LogTrace($"+{logContext}");
 			long? result = null;
 			foreach (long x in _unprocessed)
 			{
@@ -73,7 +73,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 				}
 			}
 
-			_logger.LogDebug($"-{logContext}: returning offset={result}");
+			_logger.LogTrace($"-{logContext}: returning offset={result}");
 			return result;
 		}
 

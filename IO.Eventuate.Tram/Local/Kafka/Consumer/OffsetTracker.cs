@@ -78,7 +78,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 		public IEnumerable<TopicPartitionOffset> OffsetsToCommit()
 		{
 			var logContext = "OffsetTracker.OffsetsToCommit";
-			_logger.LogDebug($"+{logContext}");
+			_logger.LogTrace($"+{logContext}");
 			var result = new List<TopicPartitionOffset>();
 			foreach (KeyValuePair<TopicPartition, TopicPartitionOffsets> pair in _state)
 			{
@@ -89,7 +89,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 				}
 			}
 
-			_logger.LogDebug($"-{logContext}: collected {result.Count} offsets to commit");
+			_logger.LogTrace($"-{logContext}: collected {result.Count} offsets to commit");
 			return result;
 		}
 
