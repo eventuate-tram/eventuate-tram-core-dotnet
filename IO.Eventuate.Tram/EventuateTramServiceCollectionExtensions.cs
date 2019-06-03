@@ -65,13 +65,8 @@ namespace IO.Eventuate.Tram
 			Action<IServiceProvider, DbContextOptionsBuilder> dbContextOptionsAction)
 		{
 			serviceCollection.TryAddSingleton(provider => new EventuateSchema(eventuateDatabaseSchema));
-			serviceCollection.TryAddScoped<IEventuateTramDbContextProvider>(provider =>
-			{
-				var eventuateSchema = provider.GetRequiredService<EventuateSchema>();
-				var builder = new DbContextOptionsBuilder<EventuateTramDbContext>();
-				dbContextOptionsAction(provider, builder);
-				return new EventuateTramDbContextProvider(builder.Options, eventuateSchema);
-			});
+			serviceCollection.AddDbContext<EventuateTramDbContext>(dbContextOptionsAction);
+			serviceCollection.TryAddScoped<IEventuateTramDbContextProvider, EventuateTramDbContextProvider>();
 		}
 
 		public static void AddEventuateTramKafkaConsumer(this IServiceCollection serviceCollection,
