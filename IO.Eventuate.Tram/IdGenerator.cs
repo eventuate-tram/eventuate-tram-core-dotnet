@@ -27,9 +27,23 @@ namespace IO.Eventuate.Tram
 		
 		private readonly object _lockObject = new object();
 		private readonly long _macAddress;
-		private long _currentPeriod = TimeNow();
+		private long _currentPeriod;
 		private long _counter;
-		
+		private readonly ITimingProvider _timingProvider;
+
+		/// <summary>
+		/// Constructor for unit tests to inject a delay provider.
+		/// </summary>
+		/// <param name="timingProvider">Interface for delaying the generator
+		/// while waiting for a new time</param>
+		/// <param name="logger">Logger</param>
+		public IdGenerator(ITimingProvider timingProvider, ILogger<IdGenerator> logger)
+		: this(logger)
+		{
+			_timingProvider = timingProvider;
+			_currentPeriod = TimeNow();
+		}
+
 		/// <summary>
 		/// Construct the ID generator. Reads the MAC address of the first NIC.
 		/// </summary>
@@ -64,16 +78,39 @@ namespace IO.Eventuate.Tram
 			}
 
 			_macAddress = macAddress;
+
+			_currentPeriod = TimeNow();
 			_logger.LogDebug($"{logContext}: Mac address {_macAddress}");
 		}
 
 		/// <summary>
 		/// Use the same tick counter as the Java implementation
 		/// since CDC sorts by ID.
+		/// Check for the timingProvider for unit tests
 		/// </summary>
-		private static long TimeNow()
+		private long TimeNow()
 		{
-			return DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(); ;
+			return _timingProvider?.GetNowMilliseconds() 
+			       ?? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+		}
+
+		/// <summary>
+		/// Delay for a specified number of milliseconds.
+		/// Uses the timing provider for unit testing
+		/// </summary>
+		/// <param name="millisecondsToDelay">Number of milliseconds</param>
+		private void DelayMilliseconds(int millisecondsToDelay)
+		{
+			if (_timingProvider != null)
+			{
+				// Use the provided delay
+				_timingProvider.DelayMilliseconds(millisecondsToDelay);
+			}
+			else
+			{
+				// No provided delay - just sleep
+				Thread.Sleep(millisecondsToDelay);
+			}
 		}
 
 		/// <summary>
@@ -83,14 +120,8 @@ namespace IO.Eventuate.Tram
 		/// </summary>
 		/// <param name="bytes">Input byte array.</param>
 		/// <returns>The long value.</returns>
-		/// <exception cref="ArgumentException">Thrown if the input byte array exceeds the maximum length for a long value.</exception>
 		private static long ToLong(byte[] bytes)
 		{
-			if (bytes.Length > 8)
-			{
-				throw new ArgumentException("Input byte array exceeds maximum length for a long value.", nameof(bytes));
-			}
-			
 			long result = 0L;
 			foreach (byte b in bytes)
 			{
@@ -116,8 +147,8 @@ namespace IO.Eventuate.Tram
 				while ((_currentPeriod = TimeNow()) <= oldPeriod)
 				{
 					_logger.LogInformation($"{logContext}: Need to delay to reset the counter");
-					// Just do nothing
-					Thread.Sleep(1);
+					// Wait for the clock to tick
+					DelayMilliseconds(1);
 				}
 				_counter = 0;
 			}
