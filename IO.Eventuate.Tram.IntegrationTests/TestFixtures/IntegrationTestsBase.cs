@@ -22,7 +22,8 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
     {
         private const string TestSettingsFile = "testsettings.json";
         private string _subscriberId = "xx";
-        protected const string AggregateType = "TestMessagesTopic";
+        protected const string AggregateType12 = "TestMessage12Topic";
+	    protected const string AggregateType34 = "TestMessage34Topic";
         protected string EventuateDatabaseSchemaName = "eventuate";
 
         protected TestSettings TestSettings;
@@ -83,7 +84,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             {
                 using (var admin = new AdminClientBuilder(config).Build())
                 {
-                    await admin.DeleteTopicsAsync(new[] {AggregateType});
+                    await admin.DeleteTopicsAsync(new[] {AggregateType12, AggregateType34});
                 }
             }
             catch (DeleteTopicsException e)
@@ -107,14 +108,17 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             TestContext.WriteLine("  Kafka server:      {0}", TestSettings.KafkaBootstrapServers);
             TestContext.WriteLine("  Schema:            {0}", EventuateDatabaseSchemaName);
             TestContext.WriteLine("  Dispatcher Id:     {0}", _subscriberId);
-            TestContext.WriteLine("  Aggregate Type:    {0}", AggregateType);
+            TestContext.WriteLine("  Aggregate Type 12: {0}", AggregateType12);
+	        TestContext.WriteLine("  Aggregate Type 34: {0}", AggregateType34);
 
-            TestContext.WriteLine("Test Results");
+			TestContext.WriteLine("Test Results");
             TestContext.WriteLine("  N Messages in DB:  {0}", _dbContext.Messages.Count());
             TestContext.WriteLine("  Unpublished Count: {0}", _dbContext.Messages.Count(msg => msg.Published == 0));
             TestContext.WriteLine("  N Received in DB:  {0}", _dbContext.ReceivedMessages.Count(msg => msg.MessageId != null));
             TestContext.WriteLine("  Received Type 1:   {0}", _testEventConsumer.Type1MessageCount);
             TestContext.WriteLine("  Received Type 2:   {0}", _testEventConsumer.Type2MessageCount);
+	        TestContext.WriteLine("  Received Type 3:   {0}", _testEventConsumer.Type3MessageCount);
+			TestContext.WriteLine("  Received Type 4:   {0}", _testEventConsumer.Type4MessageCount);
             TestContext.WriteLine("  Exception Count:   {0}", _testEventConsumer.ExceptionCount);
 
             if (_interceptor != null)
@@ -163,7 +167,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
                     provider =>
                     {
                         var consumer = provider.GetRequiredService<TestEventConsumer>();
-                        return consumer.DomainEventHandlers(AggregateType);
+                        return consumer.DomainEventHandlers(AggregateType12, AggregateType34);
                     })
                 .SetConsumerConfigProperties(consumerConfigProperties)
                 .Build<TestEventConsumer>(withInterceptor);

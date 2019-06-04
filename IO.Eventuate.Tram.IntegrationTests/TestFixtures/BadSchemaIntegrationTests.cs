@@ -32,7 +32,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             // Act
             Assert.Throws<DbUpdateException>(delegate ()
             {
-                GetTestPublisher().Publish(AggregateType, AggregateType, new List<IDomainEvent> { msg1 });
+                GetTestPublisher().Publish(AggregateType12, AggregateType12, new List<IDomainEvent> { msg1 });
             });
         }
     }
