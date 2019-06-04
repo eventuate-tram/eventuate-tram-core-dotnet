@@ -1,7 +1,7 @@
 ﻿namespace IO.Eventuate.Tram
 {
 	/// <summary>
-	/// Interface to facilitate testing the ID generator.
+	/// Interface for getting the current time and delaying for a specified amount of time
 	/// </summary>
 	public interface ITimingProvider
 	{

@@ -22,37 +22,30 @@ namespace IO.Eventuate.Tram
 	/// </summary>
 	public class IdGenerator : IIdGenerator
 	{
-		private readonly ILogger<IdGenerator> _logger;
 		private const long MaxCounter = 1 << 16;
-		
+
+		private readonly ITimingProvider _timingProvider;
+		private readonly ILogger<IdGenerator> _logger;
 		private readonly object _lockObject = new object();
 		private readonly long _macAddress;
+
 		private long _currentPeriod;
 		private long _counter;
-		private readonly ITimingProvider _timingProvider;
-
-		/// <summary>
-		/// Constructor for unit tests to inject a delay provider.
-		/// </summary>
-		/// <param name="timingProvider">Interface for delaying the generator
-		/// while waiting for a new time</param>
-		/// <param name="logger">Logger</param>
-		public IdGenerator(ITimingProvider timingProvider, ILogger<IdGenerator> logger)
-		: this(logger)
-		{
-			_timingProvider = timingProvider;
-			_currentPeriod = TimeNow();
-		}
-
+		
 		/// <summary>
 		/// Construct the ID generator. Reads the MAC address of the first NIC.
 		/// </summary>
+		/// <param name="timingProvider">Interface for getting the current time and delaying the generator
+		/// while waiting for a new time</param>
 		/// <param name="logger">Logger</param>
-		public IdGenerator(ILogger<IdGenerator> logger)
+		public IdGenerator(ITimingProvider timingProvider, ILogger<IdGenerator> logger)
 		{
 			_logger = logger;
+			_timingProvider = timingProvider;
+
 			var logContext = $"{nameof(IdGenerator)} constructor";
 			_logger.LogDebug($"+{logContext}");
+
 			NetworkInterface[] interfaces = NetworkInterface.GetAllNetworkInterfaces();
 			
 			long macAddress = interfaces.Select(i =>
@@ -86,31 +79,19 @@ namespace IO.Eventuate.Tram
 		/// <summary>
 		/// Use the same tick counter as the Java implementation
 		/// since CDC sorts by ID.
-		/// Check for the timingProvider for unit tests
 		/// </summary>
 		private long TimeNow()
 		{
-			return _timingProvider?.GetNowMilliseconds() 
-			       ?? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+			return _timingProvider.GetNowMilliseconds();
 		}
 
 		/// <summary>
 		/// Delay for a specified number of milliseconds.
-		/// Uses the timing provider for unit testing
 		/// </summary>
 		/// <param name="millisecondsToDelay">Number of milliseconds</param>
 		private void DelayMilliseconds(int millisecondsToDelay)
 		{
-			if (_timingProvider != null)
-			{
-				// Use the provided delay
-				_timingProvider.DelayMilliseconds(millisecondsToDelay);
-			}
-			else
-			{
-				// No provided delay - just sleep
-				Thread.Sleep(millisecondsToDelay);
-			}
+			_timingProvider.DelayMilliseconds(millisecondsToDelay);
 		}
 
 		/// <summary>

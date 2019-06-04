@@ -57,6 +57,7 @@ namespace IO.Eventuate.Tram
 		{
 			AddEventuateTramCommonSqlMessagingServices(serviceCollection, eventuateDatabaseSchema, dbContextOptionsAction);
 			serviceCollection.TryAddSingleton<IIdGenerator, IdGenerator>();
+			serviceCollection.TryAddSingleton<ITimingProvider, TimingProvider>();
 			serviceCollection.TryAddScoped<IMessageProducer, DatabaseMessageProducer>();
 		}
 
