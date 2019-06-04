@@ -11,6 +11,9 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers
     {
         private readonly ILogger<TestEventConsumer> _logger;
 
+		/// <summary>
+		/// Hold the statistics for a given message type.
+		/// </summary>
         public class EventStatistics
         {
             public int MessageCount { get; set; }

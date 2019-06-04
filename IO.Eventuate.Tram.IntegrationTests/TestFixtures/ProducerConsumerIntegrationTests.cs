@@ -3,7 +3,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using IO.Eventuate.Tram.Events.Common;
-using IO.Eventuate.Tram.Events.Subscriber;
 using IO.Eventuate.Tram.IntegrationTests.TestHelpers;
 using IO.Eventuate.Tram.Local.Kafka.Consumer;
 using NUnit.Framework;
@@ -68,8 +67,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             // Allow time for messages to process
             AssertMessagesArePublishedAndConsumed(eventStatistics);
 
-            msg2.AssertGoodMessageReceived(
-                (IDomainEventEnvelope<TestMessageType2>) eventStatistics.ReceivedMessages[0]);
+            msg2.AssertGoodMessageReceived(eventStatistics.ReceivedMessages[0]);
 
             GetTestMessageInterceptor()?.AssertCounts(1, 1, 1, 1, 1, 1);
         }
