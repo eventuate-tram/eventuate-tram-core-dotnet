@@ -32,8 +32,8 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             // Arrange
             TestMessageType1 msg1 = new TestMessageType1("Msg1", 1, 1.2);
             TestEventConsumer consumer = GetTestConsumer();
-	        TestEventConsumer.EventStatistics type1Statistics = consumer.GetEventStatistics(
-		        typeof(TestMessageType1));
+            TestEventConsumer.EventStatistics type1Statistics = consumer.GetEventStatistics(
+                typeof(TestMessageType1));
 
             // Act
             for (int x = 0; x < 1000; x++)
@@ -59,7 +59,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             Assert.Less(type1Statistics.GetDuration().TotalSeconds, 60.0, "Time to send 1000 messages");
 
             TestContext.WriteLine("Performance Test completed in {0} seconds",
-	            type1Statistics.GetDuration().TotalSeconds);
+                type1Statistics.GetDuration().TotalSeconds);
         }
     }
 }

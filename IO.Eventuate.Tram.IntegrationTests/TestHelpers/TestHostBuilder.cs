@@ -83,7 +83,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers
                     // Consumer Setup
                     services.AddSingleton<TConsumerType>();
                     services.AddEventuateTramDomainEventDispatcher(_subscriberId, _domainEventHandlersFactory);
-	                services.AddSingleton<TestMessage4Handler>();
+                    services.AddSingleton<TestMessage4Handler>();
                 })
                 .Build();
             return _host;

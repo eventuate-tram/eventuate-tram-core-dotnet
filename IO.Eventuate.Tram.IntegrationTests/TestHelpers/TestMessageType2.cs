@@ -15,14 +15,14 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers
         public int Value { get; set; }
         public TestMessageType2(String name, int value)
         {
-            this.Name = name;
-            this.Value = value;
+            Name = name;
+            Value = value;
         }
 
         public void AssertGoodMessageReceived(IDomainEventEnvelope<IDomainEvent> receivedMessage)
         {
             Assert.True(receivedMessage.Message.HasHeader(MessageHeaders.Id), "Message ID is in the header");
-	        TestMessageType2 @event = (TestMessageType2) receivedMessage.Event;
+            TestMessageType2 @event = (TestMessageType2) receivedMessage.Event;
             Assert.AreEqual(Name, @event.Name, "Message Name is the same");
             Assert.AreEqual(Value, @event.Value, "Message Value is the same");
         }

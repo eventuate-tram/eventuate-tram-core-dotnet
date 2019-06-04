@@ -23,7 +23,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
         private const string TestSettingsFile = "testsettings.json";
         private string _subscriberId = "xx";
         protected const string AggregateType12 = "TestMessage12Topic";
-	    protected const string AggregateType34 = "TestMessage34Topic";
+        protected const string AggregateType34 = "TestMessage34Topic";
         protected string EventuateDatabaseSchemaName = "eventuate";
 
         protected TestSettings TestSettings;
@@ -109,17 +109,16 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             TestContext.WriteLine("  Schema:            {0}", EventuateDatabaseSchemaName);
             TestContext.WriteLine("  Dispatcher Id:     {0}", _subscriberId);
             TestContext.WriteLine("  Aggregate Type 12: {0}", AggregateType12);
-	        TestContext.WriteLine("  Aggregate Type 34: {0}", AggregateType34);
+            TestContext.WriteLine("  Aggregate Type 34: {0}", AggregateType34);
 
-			TestContext.WriteLine("Test Results");
+            TestContext.WriteLine("Test Results");
             TestContext.WriteLine("  N Messages in DB:  {0}", _dbContext.Messages.Count());
             TestContext.WriteLine("  Unpublished Count: {0}", _dbContext.Messages.Count(msg => msg.Published == 0));
             TestContext.WriteLine("  N Received in DB:  {0}", _dbContext.ReceivedMessages.Count(msg => msg.MessageId != null));
-	        foreach (Type eventType in _testEventConsumer.GetEventTypes())
-	        {
-		        TestContext.WriteLine($"  Received {eventType.Name}   {_testEventConsumer.GetEventStatistics(eventType).MessageCount}");
-
-			}
+            foreach (Type eventType in _testEventConsumer.GetEventTypes())
+            {
+                TestContext.WriteLine($"  Received {eventType.Name}   {_testEventConsumer.GetEventStatistics(eventType).MessageCount}");
+            }
             TestContext.WriteLine("  Exception Count:   {0}", _testEventConsumer.ExceptionCount);
 
             if (_interceptor != null)
@@ -181,8 +180,8 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             if (_host == null)
                 return;
 
-	        var messageConsumer = _host.Services.GetService<IMessageConsumer>();
-	        messageConsumer.Close();
+            var messageConsumer = _host.Services.GetService<IMessageConsumer>();
+            messageConsumer.Close();
             _host.StopAsync().Wait();
             _host.Dispose();
             _host = null;
