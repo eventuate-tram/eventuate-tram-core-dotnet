@@ -139,7 +139,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 								}
 								else
 								{
-									processor.ThrowFailureException();
+									processor.ThrowExceptionIfHandlerFailed();
 								}
 
 								MaybeCommitOffsets(consumer, processor);

@@ -45,7 +45,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 			var logContext = $"{nameof(Process)} for {_loggingObjectContext}, " +
 			                 $"record.Key='{record.Key}', record.Topic='{record.Topic}'";
 			_logger.LogDebug($"+{logContext}");
-			ThrowFailureException();
+			ThrowExceptionIfHandlerFailed();
 			
 			_offsetTracker.NoteUnprocessed(new TopicPartition(record.Topic, record.Partition), record.Offset);
 			_handler(record, e =>
@@ -64,7 +64,8 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 			_logger.LogDebug($"-{logContext}");
 		}
 
-		internal void ThrowFailureException()
+		// In Java this method is called ThrowFailureException
+		internal void ThrowExceptionIfHandlerFailed()
 		{
 			if (_failed != null)
 			{
