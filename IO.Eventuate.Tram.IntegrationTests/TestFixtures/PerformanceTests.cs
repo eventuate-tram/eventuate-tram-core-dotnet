@@ -32,6 +32,8 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             // Arrange
             TestMessageType1 msg1 = new TestMessageType1("Msg1", 1, 1.2);
             TestEventConsumer consumer = GetTestConsumer();
+	        TestEventConsumer.EventStatistics type1Statistics = consumer.GetEventStatistics(
+		        typeof(TestMessageType1));
 
             // Act
             for (int x = 0; x < 1000; x++)
@@ -41,7 +43,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
 
             // Allow time for messages to process
             int count = 300;
-            while (consumer.Type1MessageCount < 1000 && count > 0)
+            while (type1Statistics.MessageCount < 1000 && count > 0)
             {
                 Thread.Sleep(1000);
                 count--;
@@ -51,12 +53,13 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
 
             // Assert
             Assert.AreEqual(1000, GetDbContext().Messages.Count(), "Expect 1000 messages produced");
-            Assert.AreEqual(1000, consumer.Type1MessageCount, "Received by consumer count must be 1000");
+            Assert.AreEqual(1000, type1Statistics.MessageCount, "Received by consumer count must be 1000");
             Assert.AreEqual(0, GetDbContext().Messages.Count(msg => msg.Published == 0), "No unpublished messages");
             Assert.AreEqual(1000, GetDbContext().ReceivedMessages.Count(msg => msg.MessageId != null), "Expect 1000 messages received");
-            Assert.Less(consumer.Type1Duration().TotalSeconds, 60.0, "Time must be less than 60 seconds");
+            Assert.Less(type1Statistics.GetDuration().TotalSeconds, 60.0, "Time to send 1000 messages");
 
-            TestContext.WriteLine("Performance Test completed in {0} seconds", consumer.Type1Duration().TotalSeconds);
+            TestContext.WriteLine("Performance Test completed in {0} seconds",
+	            type1Statistics.GetDuration().TotalSeconds);
         }
     }
 }

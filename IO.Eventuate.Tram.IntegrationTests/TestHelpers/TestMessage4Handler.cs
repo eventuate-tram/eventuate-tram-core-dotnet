@@ -1,26 +1,27 @@
 ﻿using System;
 using IO.Eventuate.Tram.Events.Subscriber;
+using Microsoft.Extensions.Logging;
 
 namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers
 {
 	public class TestMessage4Handler : IDomainEventHandler<TestMessageType4>
 	{
-		public TestMessage4Handler(TestEventConsumer testEventConsumer)
+		private readonly ILogger _logger;
+		private TestEventConsumer TestEventConsumer { get; }
+
+		public TestMessage4Handler(TestEventConsumer testEventConsumer,
+			ILogger<TestMessage4Handler> logger)
 		{
 			TestEventConsumer = testEventConsumer;
+			_logger = logger;
 		}
-
-		public TestEventConsumer TestEventConsumer { get; }
 
 		public void Handle(IDomainEventEnvelope<TestMessageType4> @event)
 		{
-			DateTime receivedTime = DateTime.Now;
-			if (receivedTime < TestEventConsumer.Type4FirstMessage)
-				TestEventConsumer.Type4FirstMessage = receivedTime;
-			if (receivedTime > TestEventConsumer.Type4LastMessage)
-				TestEventConsumer.Type4LastMessage = receivedTime;
-			TestEventConsumer.Type4MessageCount++;
-			TestEventConsumer.ReceivedType4Messages?.Add(@event);
+			_logger.LogDebug("Got message MessageType4Event with id={} and value={}", @event.EventId,
+				@event.Event.ToString());
+			TestEventConsumer.EventStatistics eventStatistics = TestEventConsumer.GetEventStatistics(typeof(TestMessageType4));
+			TestEventConsumer.HandleTestMessageEvent(@event, eventStatistics);
 		}
 	}
 

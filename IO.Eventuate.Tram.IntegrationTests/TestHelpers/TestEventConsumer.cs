@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using IO.Eventuate.Tram.Events.Common;
 using IO.Eventuate.Tram.Events.Subscriber;
 using Microsoft.Extensions.Logging;
 
@@ -9,79 +11,62 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers
     {
         private readonly ILogger<TestEventConsumer> _logger;
 
-        public int Type1MessageCount { get; set; }
-        public int Type2MessageCount { get; set; }
-	    public int Type3MessageCount { get; set; }
-		public int Type4MessageCount { get; set; }
-        public DateTime Type1FirstMessage { get; set; }
-        public DateTime Type2FirstMessage { get; set; }
-	    public DateTime Type3FirstMessage { get; set; }
-		public DateTime Type4FirstMessage { get; set; }
-        public DateTime Type1LastMessage { get; set; }
-        public DateTime Type2LastMessage { get; set; }
-	    public DateTime Type3LastMessage { get; set; }
-		public DateTime Type4LastMessage { get; set; }
-        public List<IDomainEventEnvelope<TestMessageType1>> ReceivedType1Messages { get; set; }
-        public List<IDomainEventEnvelope<TestMessageType2>> ReceivedType2Messages { get; set; }
-	    public List<IDomainEventEnvelope<TestMessageType3>> ReceivedType3Messages { get; set; }
-		public List<IDomainEventEnvelope<TestMessageType4>> ReceivedType4Messages { get; set; }
+	    public class EventStatistics
+	    {
+		    public int MessageCount { get; set; }
+		    public DateTime FirstMessageTime { get; set; }
+			public DateTime LastMessageTime { get; set; }
+			public List<IDomainEventEnvelope<IDomainEvent>> ReceivedMessages { get; set; }
+		    public TimeSpan GetDuration()
+		    {
+			    return LastMessageTime > FirstMessageTime
+				    ? LastMessageTime - FirstMessageTime
+				    : TimeSpan.Zero;
+		    }
+
+		}
+
+		private readonly Dictionary<Type, EventStatistics> _statisticsForEvent;
         public int ExceptionCount;
 
         public TestEventConsumer(ILogger<TestEventConsumer> logger)
         {
             _logger = logger;
+	        _statisticsForEvent = new Dictionary<Type, EventStatistics>
+	        {
+		        {typeof(TestMessageType1), new EventStatistics()},
+		        {typeof(TestMessageType2), new EventStatistics()},
+		        {typeof(TestMessageType3), new EventStatistics()},
+		        {typeof(TestMessageType4), new EventStatistics()}
+	        };
         }
+
+	    public EventStatistics GetEventStatistics(Type eventType)
+	    {
+		    return _statisticsForEvent[eventType];
+	    }
+
+	    public IEnumerable<Type> GetEventTypes()
+	    {
+		    return _statisticsForEvent.Keys;
+	    }
 
         public void Reset()
         {
-            Type1MessageCount = 0;
-            Type2MessageCount = 0;
-	        Type3MessageCount = 0;
-	        Type4MessageCount = 0;
-            Type1FirstMessage = DateTime.MaxValue;
-            Type2FirstMessage = DateTime.MaxValue;
-	        Type3FirstMessage = DateTime.MaxValue;
-	        Type4FirstMessage = DateTime.MaxValue;
-            Type1LastMessage = DateTime.MinValue;
-            Type2LastMessage = DateTime.MinValue;
-	        Type3LastMessage = DateTime.MinValue;
-	        Type4LastMessage = DateTime.MinValue;
-            ReceivedType1Messages = new List<IDomainEventEnvelope<TestMessageType1>>();
-            ReceivedType2Messages = new List<IDomainEventEnvelope<TestMessageType2>>();
-	        ReceivedType3Messages = new List<IDomainEventEnvelope<TestMessageType3>>();
-	        ReceivedType4Messages = new List<IDomainEventEnvelope<TestMessageType4>>();
+	        foreach (EventStatistics eventStatistics in _statisticsForEvent.Values)
+	        {
+		        eventStatistics.MessageCount = 0;
+				eventStatistics.FirstMessageTime = DateTime.MaxValue;
+				eventStatistics.LastMessageTime = DateTime.MinValue;
+				eventStatistics.ReceivedMessages = new List<IDomainEventEnvelope<IDomainEvent>>();
+	        }
             ExceptionCount = 0;
-        }
-
-        public void DontSaveMessages()
-        {
-            ReceivedType1Messages = null;
-            ReceivedType2Messages = null;
         }
 
         public int TotalMessageCount()
         {
-            return Type1MessageCount + Type2MessageCount + Type3MessageCount + Type4MessageCount;
-        }
-        public TimeSpan Type1Duration()
-        {
-            return Type1LastMessage > Type1FirstMessage ? Type1LastMessage - Type1FirstMessage : TimeSpan.Zero;
-        }
-        public TimeSpan Type2Duration()
-        {
-            return Type2LastMessage > Type2FirstMessage ? Type2LastMessage - Type2FirstMessage : TimeSpan.Zero;
-        }
-	    public TimeSpan Type3Duration()
-	    {
-		    return Type3LastMessage > Type3FirstMessage ? Type3LastMessage - Type3FirstMessage : TimeSpan.Zero;
-	    }
-		public TimeSpan Type4Duration()
-	    {
-		    return Type4LastMessage > Type4FirstMessage ? Type4LastMessage - Type4FirstMessage : TimeSpan.Zero;
-	    }
-        public TimeSpan TotalDuration()
-        {
-            return Type1Duration() + Type2Duration() + Type3Duration() + Type4Duration();
+	        return _statisticsForEvent.Aggregate(0, (total, stat) =>
+		        total + stat.Value.MessageCount);
         }
 
         public DomainEventHandlers DomainEventHandlers(String aggregateType12,
@@ -97,35 +82,24 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers
         }
 
         private void HandleMessageType1Event(IDomainEventEnvelope<TestMessageType1> @event)
-        {
-            _logger.LogDebug("Got MessageType1Event with id={} and value={}", @event.EventId,
-                @event.Event.ToString());
-            DateTime receivedTime = DateTime.Now;
-            if (receivedTime < Type1FirstMessage)
-                Type1FirstMessage = receivedTime;
-            if (receivedTime > Type1LastMessage)
-                Type1LastMessage = receivedTime;
-            Type1MessageCount++;
-            ReceivedType1Messages?.Add(@event);
+		{
+			_logger.LogDebug("Got MessageType1Event with id={} and value={}", @event.EventId,
+				@event.Event.ToString());
+			EventStatistics eventStatistics = GetEventStatistics(typeof(TestMessageType1));
+			HandleTestMessageEvent(@event, eventStatistics);
+			if (@event.Event.Name.Equals("ThrowException") && ExceptionCount < 5)
+			{
+				ExceptionCount++;
+				throw (new Exception());
+			}
+		}
 
-            if (@event.Event.Name.Equals("ThrowException") && ExceptionCount < 5)
-            {
-                ExceptionCount++;
-                throw (new Exception());
-            }
-        }
-
-        private void HandleMessageType2Event(IDomainEventEnvelope<TestMessageType2> @event)
+		private void HandleMessageType2Event(IDomainEventEnvelope<TestMessageType2> @event)
         {
             _logger.LogDebug("Got message MessageType2Event with id={} and value={}", @event.EventId,
                 @event.Event.ToString());
-            DateTime receivedTime = DateTime.Now;
-            if (receivedTime < Type2FirstMessage)
-                Type2FirstMessage = receivedTime;
-            if (receivedTime > Type2LastMessage)
-                Type2LastMessage = receivedTime;
-            Type2MessageCount++;
-            ReceivedType2Messages?.Add(@event);
+	        EventStatistics eventStatistics = GetEventStatistics(typeof(TestMessageType2));
+	        HandleTestMessageEvent(@event, eventStatistics);
         }
 
 	    private void HandleMessageType3Event(IDomainEventEnvelope<TestMessageType3> @event,
@@ -133,13 +107,20 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers
 	    {
 		    _logger.LogDebug("Got message MessageType3Event with id={} and value={}", @event.EventId,
 			    @event.Event.ToString());
-		    DateTime receivedTime = DateTime.Now;
-		    if (receivedTime < Type3FirstMessage)
-			    Type3FirstMessage = receivedTime;
-		    if (receivedTime > Type3LastMessage)
-			    Type3LastMessage = receivedTime;
-		    Type3MessageCount++;
-		    ReceivedType3Messages?.Add(@event);
+		    EventStatistics eventStatistics = GetEventStatistics(typeof(TestMessageType3));
+		    HandleTestMessageEvent(@event, eventStatistics);
 	    }
+
+	    public void HandleTestMessageEvent(IDomainEventEnvelope<IDomainEvent> @event, EventStatistics eventStatistics)
+	    {
+		    DateTime receivedTime = DateTime.Now;
+		    if (receivedTime < eventStatistics.FirstMessageTime)
+			    eventStatistics.FirstMessageTime = receivedTime;
+		    if (receivedTime > eventStatistics.LastMessageTime)
+			    eventStatistics.LastMessageTime = receivedTime;
+		    eventStatistics.MessageCount++;
+		    eventStatistics.ReceivedMessages.Add(@event);
+	    }
+
     }
 }

@@ -19,12 +19,13 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers
             this.Number = number;
         }
 
-        public void AssertGoodMessageReceived(IDomainEventEnvelope<TestMessageType1> receivedMessage)
+        public void AssertGoodMessageReceived(IDomainEventEnvelope<IDomainEvent> receivedMessage)
         {
             Assert.True(receivedMessage.Message.HasHeader(MessageHeaders.Id), "Message ID is in the header");
-            Assert.AreEqual(Name, receivedMessage.Event.Name, "Message Name is the same");
-            Assert.AreEqual(Value, receivedMessage.Event.Value, "Message Value is the same");
-            Assert.AreEqual(Number, receivedMessage.Event.Number, "Message Number is the same");
+	        TestMessageType1 @event = (TestMessageType1)receivedMessage.Event;
+            Assert.AreEqual(Name, @event.Name, "Message Name is the same");
+            Assert.AreEqual(Value, @event.Value, "Message Value is the same");
+            Assert.AreEqual(Number, @event.Number, "Message Number is the same");
         }
     }
 }

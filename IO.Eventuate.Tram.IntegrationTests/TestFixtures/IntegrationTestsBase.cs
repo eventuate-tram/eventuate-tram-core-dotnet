@@ -115,10 +115,11 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             TestContext.WriteLine("  N Messages in DB:  {0}", _dbContext.Messages.Count());
             TestContext.WriteLine("  Unpublished Count: {0}", _dbContext.Messages.Count(msg => msg.Published == 0));
             TestContext.WriteLine("  N Received in DB:  {0}", _dbContext.ReceivedMessages.Count(msg => msg.MessageId != null));
-            TestContext.WriteLine("  Received Type 1:   {0}", _testEventConsumer.Type1MessageCount);
-            TestContext.WriteLine("  Received Type 2:   {0}", _testEventConsumer.Type2MessageCount);
-	        TestContext.WriteLine("  Received Type 3:   {0}", _testEventConsumer.Type3MessageCount);
-			TestContext.WriteLine("  Received Type 4:   {0}", _testEventConsumer.Type4MessageCount);
+	        foreach (Type eventType in _testEventConsumer.GetEventTypes())
+	        {
+		        TestContext.WriteLine($"  Received {eventType.Name}   {_testEventConsumer.GetEventStatistics(eventType).MessageCount}");
+
+			}
             TestContext.WriteLine("  Exception Count:   {0}", _testEventConsumer.ExceptionCount);
 
             if (_interceptor != null)
