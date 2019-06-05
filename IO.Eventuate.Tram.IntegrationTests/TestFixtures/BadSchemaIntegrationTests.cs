@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using IO.Eventuate.Tram.Events.Common;
 using IO.Eventuate.Tram.IntegrationTests.TestHelpers;
-using IO.Eventuate.Tram.Messaging.Consumer.Kafka;
+using IO.Eventuate.Tram.Local.Kafka.Consumer;
 using NUnit.Framework;
 using Microsoft.EntityFrameworkCore;
 

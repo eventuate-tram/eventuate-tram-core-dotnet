@@ -1,3 +1,10 @@
+/*
+ * Ported from:
+ * repo:	https://github.com/eventuate-tram/eventuate-tram-core
+ * module:	eventuate-tram-messaging
+ * package:	io.eventuate.tram.messaging.consumer
+ */
+
 using System.Collections.Generic;
 
 namespace IO.Eventuate.Tram.Messaging.Consumer
@@ -14,6 +21,11 @@ namespace IO.Eventuate.Tram.Messaging.Consumer
 		/// using the same subscriber ID will result in a particular message being sent to only one of the subscribers.</param>
 		/// <param name="channels">The set of channels to subscribe to.</param>
 		/// <param name="handler">A message handler method to call when a message is received.</param>
-		void Subscribe(string subscriberId, ISet<string> channels, MessageHandler handler);
+		/// <returns>Message subscription</returns>
+		IMessageSubscription Subscribe(string subscriberId, ISet<string> channels, MessageHandler handler);
+
+		string GetId();
+
+		void Close();
 	}
 }

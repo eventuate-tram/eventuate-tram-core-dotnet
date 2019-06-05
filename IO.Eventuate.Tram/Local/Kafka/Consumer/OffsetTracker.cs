@@ -1,10 +1,17 @@
+/*
+ * Ported from:
+ * repo:	https://github.com/eventuate-local/eventuate-local
+ * module:	eventuate-local-java-kafka
+ * package:	io.eventuate.local.java.kafka.consumer
+ */
+
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Confluent.Kafka;
 using Microsoft.Extensions.Logging;
 
-namespace IO.Eventuate.Tram.Messaging.Consumer.Kafka
+namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 {
 	/// <summary>
 	/// Keeps track of message offsets that are (a) being processed and (b) have been processed and can be committed

@@ -1,6 +1,6 @@
 using IO.Eventuate.Tram.Messaging.Common;
 
-namespace IO.Eventuate.Tram.Messaging.Producer.Outbox
+namespace IO.Eventuate.Tram.Messaging.Producer.Database
 {
 	public class Message
 	{
@@ -22,5 +22,6 @@ namespace IO.Eventuate.Tram.Messaging.Producer.Outbox
 		public string Headers { get; set; }
 		public string Payload { get; set; }
 		public short Published { get; set; }
+		public long CreationTime { get; set; }
 	}
 }

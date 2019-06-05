@@ -1,7 +1,13 @@
-using System.Collections.Generic;
+/*
+ * Ported from:
+ * repo:	https://github.com/eventuate-local/eventuate-local
+ * module:	eventuate-local-java-kafka
+ * package:	io.eventuate.local.java.kafka.consumer
+ */
+
 using Confluent.Kafka;
 
-namespace IO.Eventuate.Tram.Messaging.Consumer.Kafka
+namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 {
 	public static class ConsumerPropertiesFactory
 	{

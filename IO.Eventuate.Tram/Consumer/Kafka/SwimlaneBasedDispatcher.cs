@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 using IO.Eventuate.Tram.Messaging.Common;
 using Microsoft.Extensions.Logging;
 
-namespace IO.Eventuate.Tram.Messaging.Consumer.Kafka
+namespace IO.Eventuate.Tram.Consumer.Kafka
 {
 	public class SwimlaneBasedDispatcher
 	{

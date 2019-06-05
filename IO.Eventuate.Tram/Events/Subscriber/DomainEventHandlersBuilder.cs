@@ -1,3 +1,10 @@
+/*
+ * Ported from:
+ * repo:	https://github.com/eventuate-tram/eventuate-tram-core
+ * module:	eventuate-tram-events
+ * package:	io.eventuate.tram.events.subscriber
+ */
+
 using System;
 using System.Collections.Generic;
 using IO.Eventuate.Tram.Events.Common;
@@ -7,7 +14,7 @@ namespace IO.Eventuate.Tram.Events.Subscriber
 {
 	public class DomainEventHandlersBuilder
 	{
-		private readonly string _aggregateType;
+		private string _aggregateType;
 		private readonly IList<DomainEventHandler> _handlers = new List<DomainEventHandler>();
 
 		public DomainEventHandlersBuilder(string aggregateType)
@@ -35,6 +42,12 @@ namespace IO.Eventuate.Tram.Events.Subscriber
 				var eventHandler = p.GetRequiredService<TEventHandler>();
 				eventHandler.Handle((IDomainEventEnvelope<TEvent>) e);
 			}));
+			return this;
+		}
+
+		public DomainEventHandlersBuilder AndForAggregateType(string aggregateType)
+		{
+			_aggregateType = aggregateType;
 			return this;
 		}
 

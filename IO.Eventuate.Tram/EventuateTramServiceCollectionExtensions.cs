@@ -1,14 +1,17 @@
 using System;
 using System.Collections.Generic;
+using IO.Eventuate.Tram.Consumer.Common;
+using IO.Eventuate.Tram.Consumer.Database;
+using IO.Eventuate.Tram.Consumer.Kafka;
 using IO.Eventuate.Tram.Database;
 using IO.Eventuate.Tram.Events.Common;
 using IO.Eventuate.Tram.Events.Publisher;
 using IO.Eventuate.Tram.Events.Subscriber;
+using IO.Eventuate.Tram.Local.Kafka.Consumer;
 using IO.Eventuate.Tram.Messaging.Common;
 using IO.Eventuate.Tram.Messaging.Consumer;
-using IO.Eventuate.Tram.Messaging.Consumer.Kafka;
 using IO.Eventuate.Tram.Messaging.Producer;
-using IO.Eventuate.Tram.Messaging.Producer.Outbox;
+using IO.Eventuate.Tram.Messaging.Producer.Database;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -54,7 +57,7 @@ namespace IO.Eventuate.Tram
 		{
 			AddEventuateTramCommonSqlMessagingServices(serviceCollection, eventuateDatabaseSchema);
 			serviceCollection.TryAddSingleton<IIdGenerator, IdGenerator>();
-			serviceCollection.TryAddScoped<IMessageProducer, OutboxMessageProducer>();
+			serviceCollection.TryAddScoped<IMessageProducer, DatabaseMessageProducer>();
 		}
 
 		private static void AddEventuateTramCommonSqlMessagingServices(
@@ -68,20 +71,30 @@ namespace IO.Eventuate.Tram
 			EventuateKafkaConsumerConfigurationProperties consumerConfigurationProperties)
 		{
 			AddEventuateTramCommonSqlMessagingServices(serviceCollection, eventuateDatabaseSchema);
+			AddEventuateTramCommonConsumer(serviceCollection);
 			serviceCollection.TryAddScoped<IDuplicateMessageDetector, SqlTableBasedDuplicateMessageDetector>();
 			serviceCollection.TryAddSingleton(provider =>
 			{
 				var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
 				var serviceScopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
 				IEnumerable<IMessageInterceptor> messageInterceptors = provider.GetServices<IMessageInterceptor>();
+				var decoratedMessageHandlerFactory = provider.GetRequiredService<DecoratedMessageHandlerFactory>(); 
 
 				IMessageConsumer messageConsumer = new KafkaMessageConsumer(bootstrapServers,
-					consumerConfigurationProperties, messageInterceptors,
+					consumerConfigurationProperties, messageInterceptors, decoratedMessageHandlerFactory,
 					loggerFactory, serviceScopeFactory);
 
 				return messageConsumer;
 			});
 			serviceCollection.AddHostedService<DomainEventDispatcherInitializer>();
+		}
+
+		private static void AddEventuateTramCommonConsumer(this IServiceCollection serviceCollection)
+		{
+			serviceCollection.TryAddSingleton<DecoratedMessageHandlerFactory>();
+			serviceCollection.AddSingleton<IMessageHandlerDecorator, PrePostReceiveMessageHandlerDecorator>();
+			serviceCollection.AddSingleton<IMessageHandlerDecorator, DuplicateDetectingMessageHandlerDecorator>();
+			serviceCollection.AddSingleton<IMessageHandlerDecorator, PrePostHandlerMessageHandlerDecorator>();
 		}
 	}
 }

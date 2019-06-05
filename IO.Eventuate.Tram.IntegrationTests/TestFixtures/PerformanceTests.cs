@@ -1,9 +1,10 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using IO.Eventuate.Tram.Events.Common;
 using IO.Eventuate.Tram.IntegrationTests.TestHelpers;
-using IO.Eventuate.Tram.Messaging.Consumer.Kafka;
+using IO.Eventuate.Tram.Local.Kafka.Consumer;
 using NUnit.Framework;
 
 namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
@@ -12,9 +13,9 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
     public class PerformanceTests : IntegrationTestsBase
     {
         [SetUp]
-        public void Setup()
+        public async Task Setup()
         {
-            CleanupKafka();
+            await CleanupKafka();
             TestSetup("eventuate", false, EventuateKafkaConsumerConfigurationProperties.Empty());
             CleanupTest();
         }

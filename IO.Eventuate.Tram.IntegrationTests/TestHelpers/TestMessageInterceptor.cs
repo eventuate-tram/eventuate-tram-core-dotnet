@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Text;
 using IO.Eventuate.Tram.Messaging.Common;
-using IO.Eventuate.Tram.Messaging.Consumer.Kafka;
 using NUnit.Framework;
 
 namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers

@@ -1,5 +1,5 @@
-using IO.Eventuate.Tram.Messaging.Consumer.Kafka;
-using IO.Eventuate.Tram.Messaging.Producer.Outbox;
+using IO.Eventuate.Tram.Consumer.Database;
+using IO.Eventuate.Tram.Messaging.Producer.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -10,6 +10,9 @@ namespace IO.Eventuate.Tram.Database
 	/// </summary>
 	public class EventuateTramDbContext : DbContext
 	{
+		// TODO: Currently this is MSSQL specific
+		private const string CurrentTimeInMillisecondsSqlExpression = "DATEDIFF_BIG(ms, '1970-01-01 00:00:00', GETUTCDATE())";
+		
 		private readonly EventuateSchema _eventuateSchema;
 
 		/// <summary>
@@ -57,16 +60,19 @@ namespace IO.Eventuate.Tram.Database
 
 			builder.HasKey(m => m.Id);
 
-			builder.Property(m => m.Id);
+			builder.Property(m => m.Id).HasColumnType("VARCHAR").HasMaxLength(767);
 
-			builder.Property(m => m.Destination).IsRequired();
+			builder.Property(m => m.Destination).HasMaxLength(1000).IsRequired();
 
-			builder.Property(m => m.Headers).IsRequired();
+			builder.Property(m => m.Headers).HasMaxLength(1000).IsRequired();
 
 			builder.Property(m => m.Payload).IsRequired();
 
 			builder.Property(m => m.Published)
 				.HasDefaultValue(0);
+
+			builder.Property(m => m.CreationTime).HasColumnName("creation_time")
+				.HasDefaultValueSql(CurrentTimeInMillisecondsSqlExpression);
 		}
 		
 		private void ConfigureReceivedMessage(EntityTypeBuilder<ReceivedMessage> builder)
@@ -75,9 +81,14 @@ namespace IO.Eventuate.Tram.Database
 
 			builder.HasKey(rm => new {rm.ConsumerId, rm.MessageId});
 
-			builder.Property(rm => rm.ConsumerId).HasColumnName("consumer_id").IsRequired();
+			builder.Property(rm => rm.ConsumerId).HasColumnType("VARCHAR").HasMaxLength(767)
+				.HasColumnName("consumer_id").IsRequired();
 
-			builder.Property(rm => rm.MessageId).HasColumnName("message_id").IsRequired();
+			builder.Property(rm => rm.MessageId).HasColumnType("VARCHAR").HasMaxLength(767).HasColumnName("message_id")
+				.IsRequired();
+
+			builder.Property(m => m.CreationTime).HasColumnName("creation_time")
+				.HasDefaultValueSql(CurrentTimeInMillisecondsSqlExpression);
 		}
 	}
 }

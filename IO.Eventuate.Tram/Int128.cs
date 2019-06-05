@@ -1,3 +1,10 @@
+/*
+ * Ported from:
+ * repo:	https://github.com/eventuate-clients/eventuate-client-java
+ * module:	eventuate-client-java
+ * package:	io.eventuate
+ */
+
 using System;
 using System.Globalization;
 

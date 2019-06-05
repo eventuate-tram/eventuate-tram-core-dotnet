@@ -1,3 +1,10 @@
+/*
+ * Ported from:
+ * repo:	https://github.com/eventuate-tram/eventuate-tram-core
+ * module:	eventuate-tram-events
+ * package:	io.eventuate.tram.events.subscriber
+ */
+
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -8,21 +15,21 @@ namespace IO.Eventuate.Tram.Events.Subscriber
 {
 	public class DomainEventHandlers
 	{
-		private readonly IList<DomainEventHandler> _handlers;
+		public IList<DomainEventHandler> Handlers { get; }
 
 		public DomainEventHandlers(IList<DomainEventHandler> handlers)
 		{
-			_handlers = handlers;
+			Handlers = handlers;
 		}
 
 		public ISet<string> GetAggregateTypes()
 		{
-			return _handlers.Select(h => h.AggregateType).ToImmutableHashSet();
+			return Handlers.Select(h => h.AggregateType).ToImmutableHashSet();
 		}
 
 		public DomainEventHandler FindTargetMethod(IMessage message, IEventTypeNamingStrategy eventTypeNamingStrategy)
 		{
-			return _handlers.FirstOrDefault(h => h.Handles(message, eventTypeNamingStrategy));
+			return Handlers.FirstOrDefault(h => h.Handles(message, eventTypeNamingStrategy));
 		}
 	}
 }

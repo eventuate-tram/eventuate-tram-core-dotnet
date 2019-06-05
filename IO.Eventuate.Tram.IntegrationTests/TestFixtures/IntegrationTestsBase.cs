@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Confluent.Kafka;
+using Confluent.Kafka.Admin;
 using IO.Eventuate.Tram.Database;
 using IO.Eventuate.Tram.Events.Publisher;
 using IO.Eventuate.Tram.IntegrationTests.TestHelpers;
+using IO.Eventuate.Tram.Local.Kafka.Consumer;
 using IO.Eventuate.Tram.Messaging.Common;
-using IO.Eventuate.Tram.Messaging.Consumer.Kafka;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -72,13 +74,28 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             GetTestMessageInterceptor()?.Reset();
         }
 
-        protected void CleanupKafka()
+        protected async Task CleanupKafka()
         {
             var config = new AdminClientConfig();
             config.BootstrapServers = TestSettings.KafkaBootstrapServers;
-            using (var admin = new AdminClientBuilder(config).Build())
+            try
             {
-                admin.DeleteTopicsAsync(new string[] { AggregateType }).Wait();
+                using (var admin = new AdminClientBuilder(config).Build())
+                {
+                    await admin.DeleteTopicsAsync(new string[] {AggregateType});
+                }
+            }
+            catch (DeleteTopicsException e)
+            {
+                // Don't fail if topic wasn't found (nothing to delete)
+                if (e.Results.Count == 1 && e.Results[0].Error.Code == ErrorCode.UnknownTopicOrPart)
+                {
+                    TestContext.WriteLine(e.Message);
+                }
+                else
+                {
+                    throw;
+                }
             }
         }
 

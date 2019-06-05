@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using IO.Eventuate.Tram.Messaging.Common;
 using Microsoft.Extensions.Logging;
 
-namespace IO.Eventuate.Tram.Messaging.Consumer.Kafka
+namespace IO.Eventuate.Tram.Consumer.Kafka
 {
 	public class SwimlaneDispatcher
 	{
@@ -78,7 +78,16 @@ namespace IO.Eventuate.Tram.Messaging.Consumer.Kafka
 					}
 				}
 				_logger.LogDebug($"{logContext}: Invoking handler for MessageId='{queuedMessage.Message.Id}'");
-				queuedMessage.MessageConsumer(queuedMessage.Message);
+				try
+				{
+					queuedMessage.MessageConsumer(queuedMessage.Message);
+				}
+				catch (Exception e)
+				{
+					_logger.LogError(e,
+						$"{logContext}: Exception handling message with ID '{queuedMessage.Message.Id}' - terminating. {e}");
+					return;
+				}
 			}
 		}
 

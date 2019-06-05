@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 
-namespace IO.Eventuate.Tram.Messaging.Consumer.Kafka
+namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 {
 	/// <summary>
 	/// Tracks the offsets for a TopicPartition that are being processed or have been processed

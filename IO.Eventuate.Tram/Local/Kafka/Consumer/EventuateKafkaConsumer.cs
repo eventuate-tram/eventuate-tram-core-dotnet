@@ -1,3 +1,10 @@
+/*
+ * Ported from:
+ * repo:	https://github.com/eventuate-local/eventuate-local
+ * module:	eventuate-local-java-kafka
+ * package:	io.eventuate.local.java.kafka.consumer
+ */
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,7 +13,7 @@ using System.Threading.Tasks;
 using Confluent.Kafka;
 using Microsoft.Extensions.Logging;
 
-namespace IO.Eventuate.Tram.Messaging.Consumer.Kafka
+namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 {
 	/// <summary>
 	/// Kafka consumer listens for a set of topics and triggers a callback when
@@ -19,7 +26,7 @@ namespace IO.Eventuate.Tram.Messaging.Consumer.Kafka
 		private const int AdminClientTimeoutMilliseconds = 10;
 
 		private readonly string _subscriberId;
-		private readonly Action<ConsumeResult<string, string>, Action<Exception>> _handler;
+		private readonly EventuateKafkaConsumerMessageHandler _handler;
 		private readonly IList<string> _topics;
 		private readonly ILoggerFactory _loggerFactory;
 
@@ -28,8 +35,12 @@ namespace IO.Eventuate.Tram.Messaging.Consumer.Kafka
 		private readonly IDictionary<string, string> _consumerProperties;
 		private readonly ILogger _logger;
 
+		//TODO investigate use of volatile
+		private volatile EventuateKafkaConsumerState _state = EventuateKafkaConsumerState.Created;
+		public EventuateKafkaConsumerState State => _state;
+
 		public EventuateKafkaConsumer(string subscriberId,
-			Action<ConsumeResult<string, string>, Action<Exception>> handler,
+			EventuateKafkaConsumerMessageHandler handler,
 			IList<string> topics,
 			string bootstrapServers,
 			EventuateKafkaConsumerConfigurationProperties eventuateKafkaConsumerConfigurationProperties,
@@ -105,6 +116,10 @@ namespace IO.Eventuate.Tram.Messaging.Consumer.Kafka
 
 				consumer.Subscribe(topicsList);
 
+				// Set state to started before starting the processing thread instead of after as in the Java code
+				// (prevent setting it to it started after it has potentially already been set to stopped)
+				_state = EventuateKafkaConsumerState.Started;
+
 				Task.Run(() =>
 				{
 					try
@@ -113,11 +128,13 @@ namespace IO.Eventuate.Tram.Messaging.Consumer.Kafka
 						{
 							try
 							{
-								ConsumeResult<string, string> record = consumer.Consume(TimeSpan.FromMilliseconds(ConsumePollMilliseconds));
+								ConsumeResult<string, string> record =
+									consumer.Consume(TimeSpan.FromMilliseconds(ConsumePollMilliseconds));
 
 								if (record != null)
 								{
-									_logger.LogDebug($"{logContext}: process record at offset='{record.Offset}', key='{record.Key}', value='{record.Value}'");
+									_logger.LogDebug(
+										$"{logContext}: process record at offset='{record.Offset}', key='{record.Key}', value='{record.Value}'");
 
 									processor.Process(record);
 								}
@@ -129,14 +146,24 @@ namespace IO.Eventuate.Tram.Messaging.Consumer.Kafka
 								_logger.LogError($"{logContext}: ConsumeException - {e.Error}. Continuing.");
 							}
 						}
+
+						_state = EventuateKafkaConsumerState.Stopped;
 					}
 					catch (TaskCanceledException)
 					{
 						_logger.LogInformation($"{logContext}: Shutdown by cancel");
+						_state = EventuateKafkaConsumerState.Stopped;
+					}
+					catch (KafkaMessageProcessorFailedException e)
+					{
+						_logger.LogError($"{logContext}: Terminating due to KafkaMessageProcessorFailedException - {e}");
+						_state = EventuateKafkaConsumerState.MessageHandlingFailed;
 					}
 					catch (Exception e)
 					{
 						_logger.LogError($"{logContext}: Exception - {e}");
+						_state = EventuateKafkaConsumerState.Failed;
+						//TODO: missing throw? Java has a throw here
 					}
 					finally
 					{
@@ -147,16 +174,20 @@ namespace IO.Eventuate.Tram.Messaging.Consumer.Kafka
 						MaybeCommitOffsets(consumer, processor);
 						consumer.Close();
 						consumer.Dispose();
+						
+						_logger.LogDebug($"{logContext}: Stopped in state {_state.ToString()}");
 					}
 				}, _cancellationTokenSource.Token);
 			}
 			catch (Exception e)
 			{
 				_logger.LogError(e, $"{logContext}: Error subscribing");
+				_state = EventuateKafkaConsumerState.FailedToStart;
 				throw;
 			}
 		}
 
+		// TODO: Java has a stop method instead of Dispose. Should we do the same?
 		public void Dispose()
 		{
 			var logContext = $"{nameof(Dispose)} for SubscriberId={_subscriberId}";

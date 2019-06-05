@@ -1,3 +1,10 @@
+/*
+ * Ported from:
+ * repo:	https://github.com/eventuate-clients/eventuate-client-java
+ * module:	eventuate-client-java-common-impl
+ * package:	io.eventuate.javaclient.commonimpl
+ */
+
 using System;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;

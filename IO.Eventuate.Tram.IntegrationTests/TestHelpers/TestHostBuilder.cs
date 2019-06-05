@@ -1,8 +1,8 @@
 ﻿using System;
 using IO.Eventuate.Tram.Database;
 using IO.Eventuate.Tram.Events.Subscriber;
+using IO.Eventuate.Tram.Local.Kafka.Consumer;
 using IO.Eventuate.Tram.Messaging.Common;
-using IO.Eventuate.Tram.Messaging.Consumer.Kafka;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;

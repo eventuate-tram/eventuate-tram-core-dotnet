@@ -1,9 +1,16 @@
+/*
+ * Ported from:
+ * repo:	https://github.com/eventuate-tram/eventuate-tram-core
+ * module:	eventuate-tram-producer-jdbc
+ * package:	io.eventuate.tram.messaging.producer
+ */
+
 using System.Collections.Generic;
 using IO.Eventuate.Tram.Database;
 using IO.Eventuate.Tram.Messaging.Common;
 using Microsoft.Extensions.Logging;
 
-namespace IO.Eventuate.Tram.Messaging.Producer.Outbox
+namespace IO.Eventuate.Tram.Messaging.Producer.Database
 {
 	/// <summary>
 	/// Implements the AbstractMessageProducer using a database context as the
@@ -11,7 +18,7 @@ namespace IO.Eventuate.Tram.Messaging.Producer.Outbox
 	/// Eventuate-tram CDC takes messages from the database and puts them
 	/// into the message queue.
 	/// </summary>
-	public class OutboxMessageProducer : AbstractMessageProducer, IMessageProducer, IMessageSender
+	public class DatabaseMessageProducer : AbstractMessageProducer, IMessageProducer, IMessageSender
 	{
 		private readonly IIdGenerator _idGenerator;
 		private readonly EventuateTramDbContext _eventuateTramDbContext;
@@ -25,9 +32,10 @@ namespace IO.Eventuate.Tram.Messaging.Producer.Outbox
 		/// <param name="eventuateTramDbContext">Database context that provides
 		/// persistence for the outbox</param>
 		/// <param name="logger">Logger for diagnostic messages</param>
-		public OutboxMessageProducer(IEnumerable<IMessageInterceptor> messageInterceptors,
+		public DatabaseMessageProducer(IEnumerable<IMessageInterceptor> messageInterceptors,
 			IIdGenerator idGenerator, EventuateTramDbContext eventuateTramDbContext,
-			ILogger<OutboxMessageProducer> logger) : base(messageInterceptors, logger)
+			ILogger<DatabaseMessageProducer> logger)
+			: base(messageInterceptors, logger)
 		{
 			_idGenerator = idGenerator;
 			_eventuateTramDbContext = eventuateTramDbContext;
@@ -54,10 +62,12 @@ namespace IO.Eventuate.Tram.Messaging.Producer.Outbox
 		/// <param name="message">Message to publish</param>
 		void IMessageSender.Send(IMessage message)
 		{
+			// Relies on database column default value to set creation_time
 			var messageEntity = new Message(message);
 			_eventuateTramDbContext.Messages.Add(messageEntity);
 			// Don't save changes on _eventuateTramDbContext here so that the application can have more
 			// control over when the save happens (within a transaction with other DbContext changes, etc.)
+			// TODO: should we call _eventuateTramDbContext.SaveChanges() here to be consistent with Java version?
 		}
 	}
 }

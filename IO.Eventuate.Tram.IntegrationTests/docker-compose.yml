@@ -1,4 +1,4 @@
-﻿version: '3.3'
+version: '3.3'
 services:
   dbsetup:
     depends_on:
@@ -42,7 +42,7 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
   cdcservice1:
-    image: ${CDC_SERVICE_DOCKER_IMAGE}:${CDC_SERVICE_DOCKER_VERSION}
+    image: eventuateio/eventuate-tram-cdc-mysql-service:${CDC_SERVICE_DOCKER_VERSION}
     depends_on:
     - kafka
     - mssql
@@ -65,8 +65,11 @@ services:
       EVENTUATELOCAL_CDC_MAX_EVENTS_PER_POLLING: 1000
       EVENTUATELOCAL_CDC_MAX_ATTEMPTS_FOR_POLLING: 100
       EVENTUATELOCAL_CDC_POLLING_RETRY_INTERVAL_IN_MILLISECONDS: 500
+
+      EVENTUATELOCAL_CDC_READER_NAME: Reader1
+      EVENTUATELOCAL_CDC_LEADERSHIP_LOCK_PATH: /eventuatelocal/cdc/leader/1
   cdcservice2:
-    image: ${CDC_SERVICE_DOCKER_IMAGE}:${CDC_SERVICE_DOCKER_VERSION}
+    image: eventuateio/eventuate-tram-cdc-mysql-service:${CDC_SERVICE_DOCKER_VERSION}
     depends_on:
     - kafka
     - mssql
@@ -89,6 +92,9 @@ services:
       EVENTUATELOCAL_CDC_MAX_EVENTS_PER_POLLING: 1000
       EVENTUATELOCAL_CDC_MAX_ATTEMPTS_FOR_POLLING: 100
       EVENTUATELOCAL_CDC_POLLING_RETRY_INTERVAL_IN_MILLISECONDS: 500
+
+      EVENTUATELOCAL_CDC_READER_NAME: Reader2
+      EVENTUATELOCAL_CDC_LEADERSHIP_LOCK_PATH: /eventuatelocal/cdc/leader/2
   mssql:
     image: microsoft/mssql-server-linux:2017-latest
     environment:

@@ -1,3 +1,10 @@
+/*
+ * Ported from:
+ * repo:	https://github.com/eventuate-clients/eventuate-client-java
+ * module:	eventuate-client-java-jdbc-common
+ * package:	io.eventuate.javaclient.spring.jdbc
+ */
+
 using System;
 using System.Linq;
 using System.Net.NetworkInformation;

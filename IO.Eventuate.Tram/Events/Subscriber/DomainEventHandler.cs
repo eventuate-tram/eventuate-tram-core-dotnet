@@ -1,3 +1,10 @@
+/*
+ * Ported from:
+ * repo:	https://github.com/eventuate-tram/eventuate-tram-core
+ * module:	eventuate-tram-events
+ * package:	io.eventuate.tram.events.subscriber
+ */
+
 using System;
 using IO.Eventuate.Tram.Events.Common;
 using IO.Eventuate.Tram.Messaging.Common;
