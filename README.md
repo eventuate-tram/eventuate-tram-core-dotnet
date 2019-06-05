@@ -255,7 +255,6 @@ You can use the following steps to run the tests:
 ```
 $ cd IO.Eventuate.Tram.IntegrationTests
 $ dotnet publish -c Release
-$ export CDC_SERVICE_DOCKER_IMAGE=<CDC docker image to use>
 $ export CDC_SERVICE_DOCKER_VERSION=<CDC docker tag>
 $ docker-compose down
 $ docker-compose build
