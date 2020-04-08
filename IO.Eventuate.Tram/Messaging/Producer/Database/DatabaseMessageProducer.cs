@@ -6,6 +6,7 @@
  */
 
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using IO.Eventuate.Tram.Database;
 using IO.Eventuate.Tram.Messaging.Common;
 using Microsoft.Extensions.Logging;
@@ -55,6 +56,15 @@ namespace IO.Eventuate.Tram.Messaging.Producer.Database
 			Logger.LogDebug($"-{logContext}: sent message id={id}");
 		}
 
+		public async Task SendAsync(string destination, IMessage message)
+		{
+			var logContext = $"{nameof(SendAsync)} destination='{destination}'";
+			Logger.LogDebug($"+{logContext}");
+			string id = _idGenerator.GenId().AsString();
+			await SendMessageAsync(id, destination, message, this);
+			Logger.LogDebug($"-{logContext}: sent message id={id}");
+		}
+
 		/// <summary>
 		/// Send message puts the message in the database to be processed
 		/// by the CDC.
@@ -68,6 +78,17 @@ namespace IO.Eventuate.Tram.Messaging.Producer.Database
 			{
 				dbContext.Messages.Add(messageEntity);
 				dbContext.SaveChanges();
+			}
+		}
+
+		public async Task SendAsync(IMessage message)
+		{
+			// Relies on database column default value to set creation_time
+			var messageEntity = new Message(message);
+			await using (EventuateTramDbContext dbContext = _dbContextProvider.CreateDbContext())
+			{
+				dbContext.Messages.Add(messageEntity);
+				await dbContext.SaveChangesAsync();
 			}
 		}
 	}

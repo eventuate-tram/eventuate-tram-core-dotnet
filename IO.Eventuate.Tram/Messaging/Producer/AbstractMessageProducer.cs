@@ -8,6 +8,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using IO.Eventuate.Tram.Messaging.Common;
 using Microsoft.Extensions.Logging;
 
@@ -72,6 +73,41 @@ namespace IO.Eventuate.Tram.Messaging.Producer
 			try
 			{
 				messageSender.Send(message);
+				PostSend(message, null);
+			}
+			catch (Exception e)
+			{
+				Logger.LogError(e, $"{logContext}: Exception sending message");
+				PostSend(message, e);
+				throw;
+			}
+		}
+		
+		protected async Task SendMessageAsync(string id, string destination, IMessage message, IMessageSender messageSender)
+		{
+			var logContext = $"{nameof(SendMessageAsync)} id='{id}', destination='{destination}'";
+			Logger.LogDebug($"+{logContext}");
+			if (id == null)
+			{
+				if (message.GetHeader(MessageHeaders.Id) == null)
+				{
+					Logger.LogError($"{logContext}: Message missing Id header");
+					throw new ArgumentNullException(nameof(id), "message needs an id");
+				}
+			}
+			else
+			{
+				message.SetHeader(MessageHeaders.Id, id);
+			}
+
+			message.SetHeader(MessageHeaders.Destination, destination);
+
+			message.SetHeader(MessageHeaders.Date, HttpDateHeaderFormatUtil.NowAsHttpDateString());
+
+			PreSend(message);
+			try
+			{
+				await messageSender.SendAsync(message);
 				PostSend(message, null);
 			}
 			catch (Exception e)
