@@ -24,7 +24,7 @@ services:
       KafkaBootstrapServers: "kafka:29092"
       ConnectionStrings__EventuateTramDbConnection: "Server=mssql;Database=TramDb;User Id=sa;Password=TestPa$$word"
     volumes:
-    - ./bin/Release/netcoreapp2.2/publish:/app
+    - ./bin/Release/netcoreapp3.1/publish:/app
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
     environment:
