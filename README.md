@@ -63,6 +63,15 @@ using (var scope = new TransactionScope())
     scope.Complete();
 }
 ```
+Alternatively, there is also an asynchronous publish method available:
+```c#
+using (var scope = new TransactionScope(new TransactionScope(TransactionScopeOption.Required, TransactionScopeAsyncFlowOption.Enabled)))
+{
+    await _applicationDbContext.SaveChangesAsync();
+    await _domainEventPublisher.PublishAsync(aggregateType, aggregateId, new List<IDomainEvent> {@event});
+    scope.Complete();
+}
+```
 
 If EnableRetryOnFailure is enabled on your DbContext, you will need to wrap the transaction in
 an ExecutionStrategy Execute() method:
