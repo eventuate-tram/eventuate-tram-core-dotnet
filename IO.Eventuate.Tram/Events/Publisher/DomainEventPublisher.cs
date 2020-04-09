@@ -6,6 +6,7 @@
  */
 
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using IO.Eventuate.Tram.Events.Common;
 using IO.Eventuate.Tram.Messaging.Common;
 using IO.Eventuate.Tram.Messaging.Producer;
@@ -50,6 +51,30 @@ namespace IO.Eventuate.Tram.Events.Publisher
 		public void Publish<TAggregate>(object aggregateId, IList<IDomainEvent> domainEvents)
 		{
 			Publish(typeof(TAggregate).FullName, aggregateId, domainEvents);
+		}
+
+		public async Task PublishAsync(string aggregateType, object aggregateId, IList<IDomainEvent> domainEvents)
+		{
+			await PublishAsync(aggregateType, aggregateId, new Dictionary<string, string>(), domainEvents);
+		}
+
+		public async Task PublishAsync(string aggregateType, object aggregateId, IDictionary<string, string> headers, IList<IDomainEvent> domainEvents)
+		{
+			var logContext = $"{nameof(PublishAsync)}, aggregateType='{aggregateType}', aggregateId='{aggregateId}' " +
+			                 $"with {headers.Count} headers and {domainEvents.Count} events";
+			_logger.LogDebug($"+{logContext}");
+			foreach (IDomainEvent domainEvent in domainEvents)
+			{
+				await _messageProducer.SendAsync(aggregateType,
+					MakeMessageForDomainEvent(aggregateType, aggregateId, headers, domainEvent,
+						_eventTypeNamingStrategy));
+			}
+			_logger.LogDebug($"-{logContext}");
+		}
+
+		public async Task PublishAsync<TAggregate>(object aggregateId, IList<IDomainEvent> domainEvents)
+		{
+			await PublishAsync(typeof(TAggregate).FullName, aggregateId, domainEvents);
 		}
 
 		public static IMessage MakeMessageForDomainEvent(string aggregateType, object aggregateId,

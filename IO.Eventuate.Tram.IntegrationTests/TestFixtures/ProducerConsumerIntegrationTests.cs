@@ -53,7 +53,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
 
             GetTestMessageInterceptor()?.AssertCounts(1, 1, 1, 1, 1, 1);
         }
-
+        
         [Test]
         public void Publish_SingleSubscribedMessageType2_MessageReceived()
         {
@@ -315,6 +315,25 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             msg2.AssertGoodMessageReceived(type2Statistics.ReceivedMessages[0]);
             Assert.That(type2Statistics.ReceivedMessages[0].Message.GetHeader(EventMessageHeaders.EventType),
                 Is.EqualTo(TestMessageType2.EventTypeName), "Event type header");
+
+            GetTestMessageInterceptor()?.AssertCounts(1, 1, 1, 1, 1, 1);
+        }
+        
+        [Test]
+        public async Task PublishAsync_SingleSubscribedMessageType1_MessageReceived()
+        {
+            // Arrange
+            TestMessageType1 msg1 = new TestMessageType1("Msg1", 1, 1.2);
+            TestEventConsumer.EventStatistics eventStatistics = GetTestConsumer().GetEventStatistics(
+                typeof(TestMessageType1));
+
+            // Act
+            await GetTestPublisher().PublishAsync(AggregateType12, AggregateType12, new List<IDomainEvent> {msg1});
+
+            // Allow time for messages to process
+            AssertMessagesArePublishedAndConsumed(eventStatistics);
+
+            msg1.AssertGoodMessageReceived(eventStatistics.ReceivedMessages[0]);
 
             GetTestMessageInterceptor()?.AssertCounts(1, 1, 1, 1, 1, 1);
         }

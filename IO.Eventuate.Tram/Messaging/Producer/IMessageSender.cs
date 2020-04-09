@@ -5,6 +5,7 @@
  * package:	io.eventuate.tram.messaging.producer
  */
 
+using System.Threading.Tasks;
 using IO.Eventuate.Tram.Messaging.Common;
 
 namespace IO.Eventuate.Tram.Messaging.Producer
@@ -12,5 +13,7 @@ namespace IO.Eventuate.Tram.Messaging.Producer
 	public interface IMessageSender
 	{
 		void Send(IMessage message);
+
+		Task SendAsync(IMessage message);
 	}
 }

@@ -28,7 +28,6 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
 
         protected TestSettings TestSettings;
 
-        // There can only be one of these between all of the tests because there's no good way to tear it down and start again
         private static IHost _host;
         private static EventuateTramDbContext _dbContext;
         private static IDomainEventPublisher _domainEventPublisher;
@@ -90,7 +89,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             catch (DeleteTopicsException e)
             {
                 // Don't fail if topic wasn't found (nothing to delete)
-                if (e.Results.Count == 1 && e.Results[0].Error.Code == ErrorCode.UnknownTopicOrPart)
+                if (e.Results.Where(r => r.Error.IsError).All(r => r.Error.Code == ErrorCode.UnknownTopicOrPart))
                 {
                     TestContext.WriteLine(e.Message);
                 }
@@ -212,8 +211,8 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
 
         protected void ClearDb(EventuateTramDbContext dbContext, String eventuateDatabaseSchemaName)
         {
-            dbContext.Database.ExecuteSqlCommand(String.Format("Delete from [{0}].[message]", eventuateDatabaseSchemaName));
-            dbContext.Database.ExecuteSqlCommand(String.Format("Delete from [{0}].[received_messages]", eventuateDatabaseSchemaName));
+            dbContext.Database.ExecuteSqlRaw(String.Format("Delete from [{0}].[message]", eventuateDatabaseSchemaName));
+            dbContext.Database.ExecuteSqlRaw(String.Format("Delete from [{0}].[received_messages]", eventuateDatabaseSchemaName));
         }
     }
 }
