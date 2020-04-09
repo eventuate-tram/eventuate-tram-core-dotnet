@@ -16,9 +16,14 @@ jobs:
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: 3.1.101
-    - name: Install dependencies
-      run: dotnet restore
     - name: Build
-      run: dotnet build --configuration Release --no-restore
+      run: dotnet build -c Release
+    - name: Pack
+      run: dotnet pack -c Release
+    - name: Upload artifact
+      uses: actions/upload-artifact@v1
+      with:
+        name: bin
+        path: IO.Eventuate.Tram/bin
     - name: Unit Test
-      run: dotnet test --no-restore --verbosity normal IO.Eventuate.Tram.UnitTests/ 
+      run: dotnet test -c Release --no-build --verbosity normal IO.Eventuate.Tram.UnitTests/ 
