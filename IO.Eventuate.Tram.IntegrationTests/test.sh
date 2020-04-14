@@ -9,13 +9,13 @@ docker-compose up -d mssql
 # Wait for MSSQL to start up
 sleep 40s
 
-docker-compose up --exit-code-from dbsetup dbsetup
+docker-compose run --rm dbsetup
 docker-compose up -d zookeeper
 docker-compose up -d kafka
 docker-compose up -d cdcservice1
 docker-compose up -d cdcservice2
                             
-# Wait for dockers to start up
+# Wait for docker containers to start up
 sleep 40s
 
 docker-compose run --rm eventuatetramtests
