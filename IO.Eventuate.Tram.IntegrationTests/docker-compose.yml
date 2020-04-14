@@ -1,30 +1,34 @@
 version: '3.3'
 services:
   dbsetup:
+    image: microsoft/mssql-tools:latest
     depends_on:
     - mssql
-    build:
-      context: .
-      dockerfile: Dockerfile-dbsetup
     environment:
       TRAM_DB_SERVER: "mssql"
       TRAM_SA_PASSWORD: "TestPa$$word"
       TRAM_DB: "TramDb"
       TRAM_SCHEMA: "eventuate"
       TRAM_SCHEMA2: "schema1"
+    volumes:
+    - ./TestDatabase:/scripts
+    working_dir: /scripts
+    entrypoint: [ "bash", "./entrypoint.sh" ]
   eventuatetramtests:
+    image: mcr.microsoft.com/dotnet/core/sdk:3.1
     depends_on:
     - zookeeper
     - kafka
     - mssql
     - cdcservice1
     - cdcservice2
-    build: .
     environment:
       KafkaBootstrapServers: "kafka:29092"
       ConnectionStrings__EventuateTramDbConnection: "Server=mssql;Database=TramDb;User Id=sa;Password=TestPa$$word"
     volumes:
-    - ./bin/Release/netcoreapp3.1/publish:/app
+    - ./bin/Release/netcoreapp3.1:/app
+    working_dir: /app
+    entrypoint: [ "dotnet", "test", "IO.Eventuate.Tram.IntegrationTests.dll", "--logger", "html", "--logger", "trx" ]
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
     environment:
