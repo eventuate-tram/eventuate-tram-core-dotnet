@@ -17,9 +17,7 @@ jobs:
       with:
         dotnet-version: 3.1.101
     - name: Build
-      run: dotnet build -c Release
-    - name: Pack
-      run: dotnet pack -c Release
+      run: ./build.sh
     - name: Upload bin folder
       uses: actions/upload-artifact@v1
       with:
@@ -29,6 +27,7 @@ jobs:
       run: dotnet test -c Release --no-build --verbosity normal --logger trx IO.Eventuate.Tram.UnitTests/
     - name: Upload unit test results
       uses: actions/upload-artifact@v1
+      if: always()
       with:
         name: unit-test-results
         path: IO.Eventuate.Tram.UnitTests/TestResults
@@ -39,6 +38,7 @@ jobs:
         CDC_SERVICE_DOCKER_VERSION: 0.21.3.RELEASE
     - name: Upload integration test results
       uses: actions/upload-artifact@v1
+      if: always()
       with:
         name: integration-test-results
         path: IO.Eventuate.Tram.IntegrationTests/bin/Release/netcoreapp3.1/TestResults
