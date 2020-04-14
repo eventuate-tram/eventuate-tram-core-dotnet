@@ -41,4 +41,4 @@ jobs:
       uses: actions/upload-artifact@v1
       with:
         name: integration-test-results
-        path: IO.Eventuate.Tram.IntegrationTests/bin/Release/netcoreapp3.1/TestResults
+        path: ./**/TestResults/**
