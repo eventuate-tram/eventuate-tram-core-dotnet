@@ -18,5 +18,5 @@ docker-compose up -d cdcservice2
 # Wait for dockers to start up
 sleep 40s
 
-docker-compose run -rm eventuatetramtests
+docker-compose run --rm eventuatetramtests
 docker stats --no-stream --all
