@@ -25,5 +25,7 @@ jobs:
       with:
         name: bin
         path: IO.Eventuate.Tram/bin
-    - name: Unit Test
-      run: dotnet test -c Release --no-build --verbosity normal IO.Eventuate.Tram.UnitTests/ 
+    - name: Unit Tests
+      run: dotnet test -c Release --no-build --verbosity normal IO.Eventuate.Tram.UnitTests/
+    - name: Integration Tests
+      run: ./test.sh
