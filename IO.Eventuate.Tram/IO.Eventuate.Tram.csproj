@@ -4,6 +4,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <VersionPrefix>0.2.1</VersionPrefix>
     <VersionSuffix>local</VersionSuffix>
+    <RepositoryUrl>https://github.com/ge-digital-firestorm/eventuate-tram-core-dotnet</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>
