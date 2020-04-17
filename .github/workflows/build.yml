@@ -45,5 +45,5 @@ jobs:
       with:
         name: integration-test-results
         path: IO.Eventuate.Tram.IntegrationTests/bin/Release/netcoreapp3.1/TestResults
-    - name: Publish nuget package
-      run: dotnet nuget push IO.Eventuate.Tram/bin/Release/*.nupkg
+#    - name: Publish nuget package
+#      run: dotnet nuget push IO.Eventuate.Tram/bin/Release/*.nupkg
