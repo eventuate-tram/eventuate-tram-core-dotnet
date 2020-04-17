@@ -9,7 +9,9 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-
+    env:
+      VERSION_PREFIX: ${{format('preview-{0}', github.run_number)}}
+ 
     steps:
     - uses: actions/checkout@v2
     - name: Setup .NET Core
@@ -20,7 +22,11 @@ jobs:
       env:
         NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
     - name: Build
-      run: ./build.sh
+      run: dotnet build -c Release --version-suffix ${VERSION_PREFIX}
+    - name: Pack
+      run: dotnet pack -c Release --no-build --version-suffix ${VERSION_PREFIX}
+#      run: ./build.sh
+
     - name: Upload bin folder
       uses: actions/upload-artifact@v1
       with:
