@@ -24,6 +24,8 @@ jobs:
 
     - name: Build
       run: ./build.sh
+      env:
+        PACKAGE_ID: ${{secrets.NOT_THERE}}
     - name: Upload bin folder
       uses: actions/upload-artifact@v1
       with:

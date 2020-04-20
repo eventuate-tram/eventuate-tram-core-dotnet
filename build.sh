@@ -8,11 +8,11 @@ IS_PREVIEW=true
 
 VERSION_PREFIX='""'
 if [[ ${IS_PREVIEW} = true ]] ; then
-    VERSION_PREFIX=preview-${GITHUB_RUN_NUMBER}
+    VERSION_PREFIX=preview-${GITHUB_RUN_NUMBER:-local}
 fi
 
-PROPS="-p:PackageId=${PACKAGE_ID} -p:RepositoryUrl=https://github.com/${GITHUB_REPOSITORY}"
+PROPS="-p:RepositoryUrl=https://github.com/${GITHUB_REPOSITORY}"
 
 dotnet build -c Release --version-suffix ${VERSION_PREFIX} ${PROPS}
 
-dotnet pack -c Release --no-build --version-suffix ${VERSION_PREFIX} ${PROPS} IO.Eventuate.Tram
+dotnet pack -c Release --no-build --version-suffix ${VERSION_PREFIX} -p:PackageId=${PACKAGE_ID:-IO.Eventuate.Tram} ${PROPS} IO.Eventuate.Tram
