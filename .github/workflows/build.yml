@@ -9,11 +9,11 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-    env:
-      VERSION_PREFIX: ${{format('preview-{0}', github.run_number)}}
  
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout source
+      uses: actions/checkout@v2
+
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v1
       with:
@@ -21,17 +21,15 @@ jobs:
         source-url: https://nuget.pkg.github.com/ge-digital-firestorm/index.json
       env:
         NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
-    - name: Build
-      run: dotnet build -c Release --version-suffix ${VERSION_PREFIX}
-    - name: Pack
-      run: dotnet pack -c Release --no-build --version-suffix ${VERSION_PREFIX}
-#      run: ./build.sh
 
+    - name: Build
+      run: ./build.sh
     - name: Upload bin folder
       uses: actions/upload-artifact@v1
       with:
         name: bin
         path: IO.Eventuate.Tram/bin
+
     - name: Unit Tests
       run: dotnet test -c Release --no-build --verbosity normal --logger trx IO.Eventuate.Tram.UnitTests/
     - name: Upload unit test results
@@ -40,6 +38,7 @@ jobs:
       with:
         name: unit-test-results
         path: IO.Eventuate.Tram.UnitTests/TestResults
+ 
     - name: Integration Tests
       run: ./test.sh
       working-directory: ./IO.Eventuate.Tram.IntegrationTests
@@ -51,5 +50,6 @@ jobs:
       with:
         name: integration-test-results
         path: IO.Eventuate.Tram.IntegrationTests/bin/Release/netcoreapp3.1/TestResults
+
 #    - name: Publish nuget package
 #      run: dotnet nuget push IO.Eventuate.Tram/bin/Release/*.nupkg
