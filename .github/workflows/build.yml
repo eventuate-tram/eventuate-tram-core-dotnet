@@ -20,9 +20,11 @@ jobs:
         dotnet-version: 3.1.201
 
     - name: Build
-      run: ./build.sh
       env:
+        # Override package name if PACKAGE_ID secret is defined.
+        # If PACKAGE_ID secret is not defined, IO.Eventuate.Tram will be used.
         PACKAGE_ID: ${{secrets.PACKAGE_ID}}
+      run: ./build.sh
         
     - name: Upload bin folder
       uses: actions/upload-artifact@v1
@@ -54,4 +56,6 @@ jobs:
         path: IO.Eventuate.Tram.IntegrationTests/bin/Release/netcoreapp3.1/TestResults
 
     - name: Publish nuget package
+      # Don't publish nuget packages for builds triggered by pull requests (pull requests from forks won't have access to secrets anyway)
+      if: github.event_name != 'pull_request'
       run: dotnet nuget push IO.Eventuate.Tram/bin/Release/*.nupkg --source ${{secrets.NUGET_PUBLISH_URL}} --api-key ${{secrets.NUGET_API_KEY}}
