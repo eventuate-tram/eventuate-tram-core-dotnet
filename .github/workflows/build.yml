@@ -17,12 +17,13 @@ jobs:
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: 3.1.101
+        dotnet-version: 3.1.201
 
     - name: Build
       run: ./build.sh
       env:
         PACKAGE_ID: ${{secrets.PACKAGE_ID}}
+        
     - name: Upload bin folder
       uses: actions/upload-artifact@v1
       with:
@@ -31,6 +32,7 @@ jobs:
 
     - name: Unit Tests
       run: dotnet test -c Release --no-build --verbosity normal --logger trx IO.Eventuate.Tram.UnitTests/
+      
     - name: Upload unit test results
       uses: actions/upload-artifact@v1
       if: always()
@@ -43,6 +45,7 @@ jobs:
       working-directory: ./IO.Eventuate.Tram.IntegrationTests
       env:
         CDC_SERVICE_DOCKER_VERSION: 0.21.3.RELEASE
+        
     - name: Upload integration test results
       uses: actions/upload-artifact@v1
       if: always()
