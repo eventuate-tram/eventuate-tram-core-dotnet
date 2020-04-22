@@ -18,9 +18,6 @@ jobs:
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: 3.1.101
-        source-url: https://nuget.pkg.github.com/ge-digital-firestorm/index.json
-      env:
-        NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
 
     - name: Build
       run: ./build.sh
@@ -53,5 +50,5 @@ jobs:
         name: integration-test-results
         path: IO.Eventuate.Tram.IntegrationTests/bin/Release/netcoreapp3.1/TestResults
 
-#    - name: Publish nuget package
-#      run: dotnet nuget push IO.Eventuate.Tram/bin/Release/*.nupkg
+    - name: Publish nuget package
+      run: dotnet nuget push IO.Eventuate.Tram/bin/Release/*.nupkg --source ${{secrets.NUGET_PUBLISH_URL}} --api-key ${{secrets.NUGET_API_KEY}}
