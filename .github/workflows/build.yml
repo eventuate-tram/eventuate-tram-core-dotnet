@@ -5,6 +5,10 @@ on:
   pull_request:
     branches: [ master ]
 
+# If the build was triggered due to a tag that starts with 'v', consider it a tagged release
+env:
+  IS_TAGGED_RELEASE: ${{startsWith(github.ref, 'refs/tags/v')}}
+
 jobs:
   build:
 
@@ -43,10 +47,10 @@ jobs:
         path: IO.Eventuate.Tram.UnitTests/TestResults
  
     - name: Integration Tests
-      run: ./test.sh
       working-directory: ./IO.Eventuate.Tram.IntegrationTests
       env:
         CDC_SERVICE_DOCKER_VERSION: 0.21.3.RELEASE
+      run: ./test.sh
         
     - name: Upload integration test results
       uses: actions/upload-artifact@v1
@@ -58,4 +62,9 @@ jobs:
     - name: Publish nuget package
       # Don't publish nuget packages for builds triggered by pull requests (pull requests from forks won't have access to secrets anyway)
       if: github.event_name != 'pull_request'
-      run: dotnet nuget push IO.Eventuate.Tram/bin/Release/*.nupkg --source ${{secrets.NUGET_PUBLISH_URL}} --api-key ${{secrets.NUGET_API_KEY}}
+      env:
+        SNAPSHOT_NUGET_PUBLISH_URL: ${{secrets.SNAPSHOT_NUGET_PUBLISH_URL}}
+        SNAPSHOT_NUGET_API_KEY: ${{secrets.SNAPSHOT_NUGET_API_KEY}}
+        NUGET_PUBLISH_URL: ${{secrets.NUGET_PUBLISH_URL}}
+        NUGET_API_KEY: ${{secrets.NUGET_API_KEY}}
+      run: ./publish-artifacts.sh
