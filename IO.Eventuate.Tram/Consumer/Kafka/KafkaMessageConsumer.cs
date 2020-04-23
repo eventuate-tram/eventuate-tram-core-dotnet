@@ -131,7 +131,7 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 		
 		private IMessage ToMessage(ConsumeResult<string, string> record)
 		{
-			return JsonMapper.FromJson<Message>(record.Value);
+			return JsonMapper.FromJson<Message>(record.Message.Value);
 		}
 
 		public void Dispose()

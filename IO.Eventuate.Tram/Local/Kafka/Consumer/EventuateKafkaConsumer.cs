@@ -133,7 +133,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 								if (record != null)
 								{
 									_logger.LogDebug(
-										$"{logContext}: process record at offset='{record.Offset}', key='{record.Key}', value='{record.Value}'");
+										$"{logContext}: process record at offset='{record.Offset}', key='{record.Message.Key}', value='{record.Message.Value}'");
 
 									processor.Process(record);
 								}

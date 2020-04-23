@@ -43,7 +43,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 		public void Process(ConsumeResult<string, string> record)
 		{
 			var logContext = $"{nameof(Process)} for {_loggingObjectContext}, " +
-			                 $"record.Key='{record.Key}', record.Topic='{record.Topic}'";
+			                 $"record.Key='{record.Message.Key}', record.Topic='{record.Topic}'";
 			_logger.LogDebug($"+{logContext}");
 			ThrowExceptionIfHandlerFailed();
 			
