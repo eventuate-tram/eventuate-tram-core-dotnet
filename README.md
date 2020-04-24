@@ -241,20 +241,12 @@ You can use the following steps to run the tests:
 
 ```
 $ cd IO.Eventuate.Tram.IntegrationTests
-$ dotnet publish -c Release
+$ dotnet build -c Release
 $ export CDC_SERVICE_DOCKER_VERSION=<CDC docker tag>
-$ docker-compose down
-$ docker-compose build
-$ docker-compose up -d mssql
-$ docker-compose up --exit-code-from dbsetup dbsetup
-$ docker-compose up -d zookeeper
-$ docker-compose up -d kafka
-$ docker-compose up -d cdcservice1
-$ docker-compose up -d cdcservice2
-$ docker-compose up eventuatetramtests
+$ ./test.sh
 ```
 
-Test results will be written to ./bin/Release/netcoreapp2.2/publish/TestResults.
+Test results will be written to ./bin/Release/netcoreapp3.1/TestResults.
 
 ### Environment Variable Configuration
 
