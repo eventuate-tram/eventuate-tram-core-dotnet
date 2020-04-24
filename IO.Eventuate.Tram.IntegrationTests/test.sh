@@ -17,5 +17,9 @@ docker-compose up -d cdcservice
 # Wait for docker containers to start up
 sleep 40s
 
-docker-compose run --rm eventuatetramtests
+# Print docker status
+docker ps
 docker stats --no-stream --all
+
+# Run tests
+docker-compose run --rm eventuatetramtests

@@ -51,6 +51,11 @@ jobs:
       env:
         CDC_SERVICE_DOCKER_VERSION: 0.6.0.RELEASE
       run: ./test.sh
+      
+    - name: Print docker status
+      run: |
+        docker ps
+        docker stats --no-stream --all
         
     - name: Upload integration test results
       uses: actions/upload-artifact@v1
