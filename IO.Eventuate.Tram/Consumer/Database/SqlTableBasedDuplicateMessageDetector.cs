@@ -1,5 +1,5 @@
 using System;
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using System.Transactions;
 using IO.Eventuate.Tram.Consumer.Common;
 using IO.Eventuate.Tram.Database;

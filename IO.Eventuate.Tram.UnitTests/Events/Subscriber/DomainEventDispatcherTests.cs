@@ -14,7 +14,7 @@ namespace IO.Eventuate.Tram.UnitTests.Events.Subscriber
 {
     public class DomainEventDispatcherTests
     {
-        private String _subscriberId;
+        private String _subscriberId = "test-subscriber-id";
         private static String aggregateType = "AggregateType";
 
         private String aggregateId = "xyz";

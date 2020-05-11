@@ -5,6 +5,7 @@
  * package:	io.eventuate.tram.messaging.producer
  */
 
+using System.Threading.Tasks;
 using IO.Eventuate.Tram.Messaging.Common;
 
 namespace IO.Eventuate.Tram.Messaging.Producer
@@ -20,5 +21,12 @@ namespace IO.Eventuate.Tram.Messaging.Producer
 		/// <param name="destination">The destination channel</param>
 		/// <param name="message">The message to send</param>
 		void Send(string destination, IMessage message);
+
+		/// <summary>
+		/// Send a message
+		/// </summary>
+		/// <param name="destination">The destination channel</param>
+		/// <param name="message">The message to send</param>
+		Task SendAsync(string destination, IMessage message);
 	}
 }

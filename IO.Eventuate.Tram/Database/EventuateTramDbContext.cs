@@ -15,6 +15,8 @@ namespace IO.Eventuate.Tram.Database
 		
 		private readonly EventuateSchema _eventuateSchema;
 
+		public string EventuateDatabaseSchema => _eventuateSchema.EventuateDatabaseSchema;
+
 		/// <summary>
 		/// Default constructor
 		/// </summary>

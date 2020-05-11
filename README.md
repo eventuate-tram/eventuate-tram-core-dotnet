@@ -63,6 +63,15 @@ using (var scope = new TransactionScope())
     scope.Complete();
 }
 ```
+Alternatively, there is also an asynchronous publish method available:
+```c#
+using (var scope = new TransactionScope(new TransactionScope(TransactionScopeOption.Required, TransactionScopeAsyncFlowOption.Enabled)))
+{
+    await _applicationDbContext.SaveChangesAsync();
+    await _domainEventPublisher.PublishAsync(aggregateType, aggregateId, new List<IDomainEvent> {@event});
+    scope.Complete();
+}
+```
 
 If EnableRetryOnFailure is enabled on your DbContext, you will need to wrap the transaction in
 an ExecutionStrategy Execute() method:
@@ -79,33 +88,11 @@ strategy.Execute(() =>
 });
 ```
 
-Finally, the Eventuate Tram CDC service will need to be running and monitoring your database
-for new events to publish. This is easiest to do by running it in a docker container. See below
-for an example docker-compose.yml file:
-```yaml
-version: '3.3'
-services:
-  cdcservice:
-    image: eventuateio/eventuate-tram-cdc-mysql-service:0.21.2
-    ports:
-      - "8099:8080"
-    environment:
-      SPRING_DATASOURCE_URL: <JDBC connection string for database>
-      SPRING_DATASOURCE_USERNAME: <username>
-      SPRING_DATASOURCE_PASSWORD: <password>
-      SPRING_DATASOURCE_TEST_ON_BORROW: "true"
-      SPRING_DATASOURCE_VALIDATION_QUERY: SELECT 1
-      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.microsoft.sqlserver.jdbc.SQLServerDriver
-      EVENTUATELOCAL_CDC_POLLING_INTERVAL_IN_MILLISECONDS: 500
-      EVENTUATELOCAL_CDC_MAX_EVENTS_PER_POLLING: 1000
-      EVENTUATELOCAL_CDC_MAX_ATTEMPTS_FOR_POLLING: 100
-      EVENTUATELOCAL_CDC_POLLING_RETRY_INTERVAL_IN_MILLISECONDS: 500
-      EVENTUATELOCAL_KAFKA_BOOTSTRAP_SERVERS: <bootstrapServers>
-      EVENTUATELOCAL_ZOOKEEPER_CONNECTION_STRING: <zookeeper host:port>
-      EVENTUATE_DATABASE_SCHEMA: <DB schema name>
-      SPRING_PROFILES_ACTIVE: EventuatePolling
-      EVENTUATELOCAL_CDC_READER_NAME: <Reader name>
-```
+Finally, the [Eventuate CDC Service](https://github.com/eventuate-foundation/eventuate-cdc) will need to be running and monitoring your database
+for new events to publish. The [Eventuate Tram Code Basic examples](https://github.com/eventuate-tram/eventuate-tram-core-examples-basic) 
+project has an example docker-compose.yml file. See also the Eventuate CDC Service configuration 
+[documentation](https://eventuate.io/docs/manual/eventuate-tram/latest/cdc-configuration.html).
+
 ### Consuming Events (Option 1)
 
 Create one or more event handler services that implements IDomainEventHandler<TEvent>. You could have 
@@ -254,20 +241,12 @@ You can use the following steps to run the tests:
 
 ```
 $ cd IO.Eventuate.Tram.IntegrationTests
-$ dotnet publish -c Release
+$ dotnet build -c Release
 $ export CDC_SERVICE_DOCKER_VERSION=<CDC docker tag>
-$ docker-compose down
-$ docker-compose build
-$ docker-compose up -d mssql
-$ docker-compose up --exit-code-from dbsetup dbsetup
-$ docker-compose up -d zookeeper
-$ docker-compose up -d kafka
-$ docker-compose up -d cdcservice1
-$ docker-compose up -d cdcservice2
-$ docker-compose up eventuatetramtests
+$ ./test.sh
 ```
 
-Test results will be written to ./bin/Release/netcoreapp2.2/publish/TestResults.
+Test results will be written to ./bin/Release/netcoreapp3.1/TestResults.
 
 ### Environment Variable Configuration
 

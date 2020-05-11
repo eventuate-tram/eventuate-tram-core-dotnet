@@ -4,6 +4,7 @@ using IO.Eventuate.Tram.Events.Subscriber;
 using IO.Eventuate.Tram.Local.Kafka.Consumer;
 using IO.Eventuate.Tram.Messaging.Common;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -65,7 +66,9 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers
                 {
                     services.AddDbContext<EventuateTramDbContext>((provider, o) =>
                     {
-                        o.UseSqlServer(_sqlConnectionString);
+                        o.UseSqlServer(_sqlConnectionString)
+                            // Use a model cache key factory that ensures a new model is created if EventuateSchema is changed
+                            .ReplaceService<IModelCacheKeyFactory, DynamicEventuateSchemaModelCacheKeyFactory>();
                     });
                     services.AddEventuateTramSqlKafkaTransport(_eventuateDatabaseSchemaName, _kafkaBootstrapServers, EventuateKafkaConsumerConfigurationProperties.Empty(),
                         (provider, o) =>
