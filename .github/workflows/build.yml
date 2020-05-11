@@ -53,6 +53,7 @@ jobs:
       run: ./test.sh
       
     - name: Print docker status
+      if: always()
       run: |
         docker ps
         docker stats --no-stream --all
