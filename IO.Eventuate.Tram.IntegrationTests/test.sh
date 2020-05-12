@@ -23,3 +23,6 @@ docker stats --no-stream --all
 
 # Run tests
 docker-compose run --rm eventuatetramtests
+
+# Tear down test environment
+docker-compose down -v --remove-orphans

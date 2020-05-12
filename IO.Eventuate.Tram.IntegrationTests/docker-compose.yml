@@ -1,7 +1,8 @@
 version: '3.3'
 services:
   dbsetup:
-    image: microsoft/mssql-tools:latest
+#    The mssql-tools image seems to only have a "latest" tag, so specifying the digest here to ensure a specific version is used
+    image: mcr.microsoft.com/mssql-tools@sha256:62556500522072535cb3df2bb5965333dded9be47000473e9e0f84118e248642
     depends_on:
     - mssql
     environment:
@@ -29,12 +30,12 @@ services:
     working_dir: /app
     entrypoint: [ "dotnet", "test", "IO.Eventuate.Tram.IntegrationTests.dll", "--verbosity", "normal", "--logger", "trx" ]
   zookeeper:
-    image: confluentinc/cp-zookeeper:latest
+    image: confluentinc/cp-zookeeper:5.5.0
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
   kafka:
-    image: confluentinc/cp-kafka:latest
+    image: confluentinc/cp-kafka:5.5.0
     depends_on:
       - zookeeper
     environment:
@@ -45,7 +46,7 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
   cdcservice:
-    image: eventuateio/eventuate-cdc-service:${CDC_SERVICE_DOCKER_VERSION}
+    image: eventuateio/eventuate-cdc-service:${CDC_SERVICE_DOCKER_VERSION:?You must set the CDC_SERVICE_DOCKER_VERSION environment variable.}
     depends_on:
     - kafka
     - mssql
@@ -68,7 +69,7 @@ services:
       EVENTUATE_CDC_PIPELINE_PIPELINE2_READER: READER1
       EVENTUATE_CDC_PIPELINE_PIPELINE2_EVENTUATEDATABASESCHEMA: schema1
   mssql:
-    image: microsoft/mssql-server-linux:2017-latest
+    image: mcr.microsoft.com/mssql/server:2017-CU20-ubuntu-16.04
     environment:
       SA_PASSWORD: "TestPa$$word"
       ACCEPT_EULA: "Y"
