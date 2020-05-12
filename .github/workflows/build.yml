@@ -2,8 +2,6 @@ name: Build
 
 on:
   push:
-  pull_request:
-    branches: [ master ]
 
 # If the build was triggered due to a tag that starts with 'v', consider it a tagged release
 env:
@@ -13,7 +11,7 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
- 
+
     steps:
     - name: Checkout source
       uses: actions/checkout@v2
@@ -29,7 +27,7 @@ jobs:
         # If PACKAGE_ID secret is not defined, IO.Eventuate.Tram will be used.
         PACKAGE_ID: ${{secrets.PACKAGE_ID}}
       run: ./build.sh
-        
+
     - name: Upload bin folder
       uses: actions/upload-artifact@v1
       with:
@@ -38,25 +36,25 @@ jobs:
 
     - name: Unit Tests
       run: dotnet test -c Release --no-build --verbosity normal --logger trx IO.Eventuate.Tram.UnitTests/
-      
+
     - name: Upload unit test results
       uses: actions/upload-artifact@v1
       if: always()
       with:
         name: unit-test-results
         path: IO.Eventuate.Tram.UnitTests/TestResults
- 
+
     - name: Integration Tests
       working-directory: ./IO.Eventuate.Tram.IntegrationTests
       env:
         CDC_SERVICE_DOCKER_VERSION: 0.6.0.RELEASE
       run: ./test.sh
-      
+
     - name: Print docker status
       run: |
         docker ps
         docker stats --no-stream --all
-        
+
     - name: Upload integration test results
       uses: actions/upload-artifact@v1
       if: always()
