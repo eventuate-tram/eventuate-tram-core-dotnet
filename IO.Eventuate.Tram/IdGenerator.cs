@@ -10,6 +10,7 @@ using System.Linq;
 using System.Net.NetworkInformation;
 using System.Threading;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace IO.Eventuate.Tram
 {
@@ -25,6 +26,7 @@ namespace IO.Eventuate.Tram
 		private const long MaxCounter = 1 << 16;
 
 		private readonly ITimingProvider _timingProvider;
+		private readonly IdGeneratorOptions _idGeneratorOptions;
 		private readonly ILogger<IdGenerator> _logger;
 		private readonly object _lockObject = new object();
 		private readonly long _macAddress;
@@ -38,21 +40,46 @@ namespace IO.Eventuate.Tram
 		/// <param name="timingProvider">Interface for getting the current time and delaying the generator
 		/// while waiting for a new time</param>
 		/// <param name="logger">Logger</param>
-		public IdGenerator(ITimingProvider timingProvider, ILogger<IdGenerator> logger)
+		public IdGenerator(ITimingProvider timingProvider, IOptions<IdGeneratorOptions> idGeneratorOptions, ILogger<IdGenerator> logger)
 		{
 			_logger = logger;
 			_timingProvider = timingProvider;
+			_idGeneratorOptions = idGeneratorOptions.Value;
 
 			var logContext = $"{nameof(IdGenerator)} constructor";
 			_logger.LogDebug($"+{logContext}");
 
-			NetworkInterface[] interfaces = NetworkInterface.GetAllNetworkInterfaces();
+			_macAddress = GetMacAddress();
 			
+			if (_macAddress == default(long))
+			{
+				_logger.LogError($"{logContext}: cannot find MAC address");
+				throw new InvalidOperationException("Cannot find mac address");
+			}
+
+			_currentPeriod = TimeNow();
+			_logger.LogDebug($"{logContext}: Mac address {_macAddress}");
+		}
+
+		private long GetMacAddress()
+		{
+			var logContext = $"{nameof(GetMacAddress)}";
+			_logger.LogDebug($"+{logContext}");
+			
+			string macAddressOverrideString = _idGeneratorOptions?.MacAddress;
+			if (macAddressOverrideString != null)
+			{
+				long macAddressOverride = long.Parse(macAddressOverrideString);
+				_logger.LogDebug($"-{logContext}: Using overridden MAC address {macAddressOverride}");
+				return macAddressOverride;
+			}
+			
+			NetworkInterface[] interfaces = NetworkInterface.GetAllNetworkInterfaces();
 			long macAddress = interfaces.Select(i =>
 				{
 					PhysicalAddress address = i.GetPhysicalAddress();
 					byte[] macAddressBytes = address.GetAddressBytes();
-					
+
 					// If the address doesn't have the expected length of 6, return 0 to skip to the next interface
 					if (macAddressBytes.Length != 6)
 					{
@@ -63,17 +90,9 @@ namespace IO.Eventuate.Tram
 					return ToLong(macAddressBytes);
 				})
 				.FirstOrDefault(addressAsLong => addressAsLong != 0L);
-
-			if (macAddress == default(long))
-			{
-				_logger.LogError($"{logContext}: cannot find MAC address");
-				throw new InvalidOperationException("Cannot find mac address");
-			}
-
-			_macAddress = macAddress;
-
-			_currentPeriod = TimeNow();
-			_logger.LogDebug($"{logContext}: Mac address {_macAddress}");
+			
+			_logger.LogDebug($"-{logContext}: Mac address {macAddress}");
+			return macAddress;
 		}
 
 		/// <summary>
