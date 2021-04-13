@@ -81,9 +81,12 @@ strategy.Execute(() =>
 {
     using (var scope = new TransactionScope())
     {
-        _applicationDbContext.SaveChanges();
+        // Defer accepting changes until after transaction is committed so that
+        // the changes are saved again on an execution strategy retry
+        _applicationDbContext.SaveChanges(false);
         _domainEventPublisher.Publish(aggregateType, aggregateId, new List<IDomainEvent> {@event});
         scope.Complete();
+        _applicationDbContext.ChangeTracker.AcceptAllChanges();
     }
 });
 ```
