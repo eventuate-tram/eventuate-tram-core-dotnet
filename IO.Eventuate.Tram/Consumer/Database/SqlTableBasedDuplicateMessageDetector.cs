@@ -60,7 +60,8 @@ namespace IO.Eventuate.Tram.Consumer.Database
 			                    $"for {nameof(SubscriberIdAndMessage.SubscriberId)}='{subscriberIdAndMessage.SubscriberId}', " +
 			                    $"MessageId='{subscriberIdAndMessage.Message.Id}'";
 
-			using (var transactionScope = new TransactionScope())
+			using (var transactionScope = new TransactionScope(TransactionScopeOption.Required,
+				new TransactionOptions {IsolationLevel = IsolationLevel.ReadCommitted}))
 			{
 				try
 				{

@@ -56,7 +56,8 @@ If you want to publish events atomically along with persisting application state
 you should call Publish() within a transaction along with saving the changes to you application state.
 If your application is using Entity Framework, this can be done as follows:
 ```c#
-using (var scope = new TransactionScope())
+using (var scope = new TransactionScope(TransactionScopeOption.Required,
+    new TransactionOptions {IsolationLevel = IsolationLevel.ReadCommitted}))
 {
     _applicationDbContext.SaveChanges();
     _domainEventPublisher.Publish(aggregateType, aggregateId, new List<IDomainEvent> {@event});
@@ -65,7 +66,9 @@ using (var scope = new TransactionScope())
 ```
 Alternatively, there is also an asynchronous publish method available:
 ```c#
-using (var scope = new TransactionScope(new TransactionScope(TransactionScopeOption.Required, TransactionScopeAsyncFlowOption.Enabled)))
+using (var scope = new TransactionScope(TransactionScopeOption.Required,
+    new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+    TransactionScopeAsyncFlowOption.Enabled))
 {
     await _applicationDbContext.SaveChangesAsync();
     await _domainEventPublisher.PublishAsync(aggregateType, aggregateId, new List<IDomainEvent> {@event});
@@ -79,7 +82,8 @@ an ExecutionStrategy Execute() method:
 IExecutionStrategy strategy = _applicationDbContext.Database.CreateExecutionStrategy();
 strategy.Execute(() =>
 {
-    using (var scope = new TransactionScope())
+    using (var scope = new TransactionScope(TransactionScopeOption.Required,
+        new TransactionOptions {IsolationLevel = IsolationLevel.ReadCommitted}))
     {
         _applicationDbContext.SaveChanges();
         _domainEventPublisher.Publish(aggregateType, aggregateId, new List<IDomainEvent> {@event});
