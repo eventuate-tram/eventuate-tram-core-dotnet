@@ -33,12 +33,13 @@ namespace IO.Eventuate.Tram
 
 		private long _currentPeriod;
 		private long _counter;
-		
+
 		/// <summary>
 		/// Construct the ID generator. Reads the MAC address of the first NIC.
 		/// </summary>
 		/// <param name="timingProvider">Interface for getting the current time and delaying the generator
 		/// while waiting for a new time</param>
+		/// <param name="idGeneratorOptions">IdGenerator configuration options</param>
 		/// <param name="logger">Logger</param>
 		public IdGenerator(ITimingProvider timingProvider, IOptions<IdGeneratorOptions> idGeneratorOptions, ILogger<IdGenerator> logger)
 		{
