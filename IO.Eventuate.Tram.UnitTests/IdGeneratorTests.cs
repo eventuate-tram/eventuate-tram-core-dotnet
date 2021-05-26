@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using NUnit.Framework;
@@ -88,6 +89,18 @@ namespace IO.Eventuate.Tram.UnitTests
 
 			// Assert
 			Assert.That(id?.Lo >> 16, Is.EqualTo(expectedMacAddress), "MAC address part of ID");
+		}
+
+		[Test]
+		public void Constructor_MacAddressOverriddenWithInvalidValue_ThrowsFormatException()
+		{
+			// Arrange
+			const string macAddressOverride = "BigMac";
+			const long expectedMacAddress = 12345L;
+			_idGeneratorOptions.Value.Returns(new IdGeneratorOptions {MacAddress = macAddressOverride});
+
+			// Act / Assert
+			Assert.Throws<FormatException>(() => new IdGenerator(_timingProvider, _idGeneratorOptions, _logger));
 		}
 	}
 }
