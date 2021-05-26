@@ -96,6 +96,26 @@ for new events to publish. The [Eventuate Tram Code Basic examples](https://gith
 project has an example docker-compose.yml file. See also the Eventuate CDC Service configuration 
 [documentation](https://eventuate.io/docs/manual/eventuate-tram/latest/cdc-configuration.html).
 
+#### Message ID Generation
+
+Eventuate Tram generates message IDs using the network interface's MAC address by default when publishing messages. 
+This can result in duplicate message IDs being generated if multiple processes using Eventuate Tram 
+are running on the same machine. To avoid this, the MAC address used for the purpose of ID generation 
+can be overridden by setting the IdGeneratorOptions in Startup.cs. For example, the MAC address can 
+be set from a configuration property value:
+```c#
+services.Configure<IdGeneratorOptions>(o =>
+{
+    o.MacAddress = _configuration.GetValue<string>("EventuateMacAddress");
+});
+
+```
+This would allow overriding the MAC address via configuration (e.g. by setting the 
+`EventuateMacAddress` property within the appsettings.json file or via an environment variable).
+
+Note that the specified "MAC address" should be a number specified as a base 10 integer value with a 
+maximum of 140737488355327.
+
 ### Consuming Events (Option 1)
 
 Create one or more event handler services that implements IDomainEventHandler<TEvent>. You could have 
