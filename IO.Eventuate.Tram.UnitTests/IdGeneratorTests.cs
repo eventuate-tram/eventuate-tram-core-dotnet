@@ -96,7 +96,6 @@ namespace IO.Eventuate.Tram.UnitTests
 		{
 			// Arrange
 			const string macAddressOverride = "BigMac";
-			const long expectedMacAddress = 12345L;
 			_idGeneratorOptions.Value.Returns(new IdGeneratorOptions {MacAddress = macAddressOverride});
 
 			// Act / Assert
