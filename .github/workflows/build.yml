@@ -67,13 +67,7 @@ jobs:
       # Don't publish nuget packages for builds triggered by pull requests (pull requests from forks won't have access to secrets anyway)
       if: github.event_name != 'pull_request'
       env:
-        SNAPSHOT_NUGET_PUBLISH_URL: github
-        SNAPSHOT_NUGET_API_KEY: ${{ secrets.GITHUB_TOKEN }}
         NUGET_PUBLISH_URL: ${{secrets.NUGET_PUBLISH_URL}}
         NUGET_API_KEY: ${{secrets.NUGET_API_KEY}}
       run: |
-        dotnet nuget add source --username eventuateio \
-          --password "$SNAPSHOT_NUGET_API_KEY" \
-          --store-password-in-clear-text \
-          --name github "https://nuget.pkg.github.com/eventuate-tram/index.json"
         ./publish-artifacts.sh
