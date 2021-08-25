@@ -38,6 +38,8 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 		private volatile EventuateKafkaConsumerState _state = EventuateKafkaConsumerState.Created;
 		public EventuateKafkaConsumerState State => _state;
 
+		private Task _consumeTask = null;
+
 		public EventuateKafkaConsumer(string subscriberId,
 			EventuateKafkaConsumerMessageHandler handler,
 			IList<string> topics,
@@ -119,7 +121,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 				// (prevent setting it to it started after it has potentially already been set to stopped)
 				_state = EventuateKafkaConsumerState.Started;
 
-				Task.Run(() =>
+				_consumeTask = Task.Run(() =>
 				{
 					try
 					{
@@ -198,6 +200,9 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 				_logger.LogDebug($"+{logContext}: Sending cancel to consumer thread.");
 				_cancellationTokenSource.Cancel();
 			}
+
+			_consumeTask?.Wait();
+
 			_cancellationTokenSource.Dispose();
 			_logger.LogDebug($"-{logContext}");
 		}
