@@ -177,6 +177,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 						// that all the offsets are ready. Worst case is that there
 						// are messages processed more than once.
 						MaybeCommitOffsets(consumer, processor);
+						consumer.Close();
 						consumer.Dispose();
 						
 						_logger.LogDebug($"{logContext}: Stopped in state {_state.ToString()}");
