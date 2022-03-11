@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Threading;
 using System.Threading.Tasks;
 using IO.Eventuate.Tram.Messaging.Common;
 using Microsoft.Extensions.Logging;
@@ -20,6 +21,9 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 
 		// The running flag must only be accessed within a lock(_lockObject)
 		private bool _running;
+		private bool _dispatcherStopped;
+		private CancellationTokenSource _cancellationTokenSource;
+		private Task _processQueuedMessagesTask;
 
 		public SwimlaneDispatcher(string subscriberId, int swimlane, ILogger<SwimlaneDispatcher> logger)
 		{
@@ -36,7 +40,7 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 				var queuedMessage = new QueuedMessage(message, messageConsumer);
 				_queue.Enqueue(queuedMessage);
 				// Start a message processor if one is not running
-				if (!_running)
+				if (!_running && !_dispatcherStopped)
 				{
 					_logger.LogDebug($"{logContext}: Added message and starting message processor");
 					_running = true;
@@ -52,12 +56,14 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 
 		private void StartMessageProcessor()
 		{
+			_cancellationTokenSource ??= new CancellationTokenSource();
+
 			// Java implementation uses a ThreadPoolExecutor as executor.
 			// DOTNET Task.Run queues the work to run on the ThreadPool.
-			Task.Run(() => ProcessQueuedMessage());
+			_processQueuedMessagesTask = Task.Run(() => ProcessQueuedMessage(_cancellationTokenSource.Token));
 		}
 
-		private void ProcessQueuedMessage()
+		private void ProcessQueuedMessage(CancellationToken cancellationToken)
 		{
 			var logContext = $"{nameof(ProcessQueuedMessage)} for {_dispatcherContext}";
 			_logger.LogDebug($"+{logContext}");
@@ -77,6 +83,9 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 						}
 					}
 				}
+
+				cancellationToken.ThrowIfCancellationRequested();
+				
 				_logger.LogDebug($"{logContext}: Invoking handler for MessageId='{queuedMessage.Message.Id}'");
 				try
 				{
@@ -89,6 +98,47 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 					return;
 				}
 			}
+		}
+
+		/// <summary>
+		/// Stops the dispatcher from processing any further messages
+		/// </summary>
+		public void Stop()
+		{
+			var logContext = $"{nameof(Stop)} for {_dispatcherContext}";
+			_logger.LogDebug($"+{logContext}");
+			lock (_lockObject)
+			{
+				if (_cancellationTokenSource == null)
+				{
+					return;
+				}
+				
+				_cancellationTokenSource.Cancel();
+
+				try
+				{
+					_processQueuedMessagesTask.Wait();
+				}
+				catch (AggregateException e)
+				{
+					foreach (Exception exception in e.InnerExceptions)
+					{
+						if (exception is OperationCanceledException)
+						{
+							_logger.LogDebug($"{logContext}: Cancelled process message queue task");
+						}
+						else
+						{
+							throw exception;
+						}
+					}
+				}
+				_cancellationTokenSource.Dispose();
+				_cancellationTokenSource = null;
+				_dispatcherStopped = true;
+			}
+			_logger.LogDebug($"-{logContext}");
 		}
 
 		private class QueuedMessage

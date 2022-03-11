@@ -28,6 +28,7 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 		private readonly string _id = Guid.NewGuid().ToString();
 		private readonly string _bootstrapServers;
 		private readonly List<EventuateKafkaConsumer> _consumers = new List<EventuateKafkaConsumer>();
+		private readonly List<SwimlaneBasedDispatcher> _dispatchers = new List<SwimlaneBasedDispatcher>();
 
 		public KafkaMessageConsumer(string bootstrapServers,
 			EventuateKafkaConsumerConfigurationProperties eventuateKafkaConsumerConfigurationProperties,
@@ -65,12 +66,15 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 				_loggerFactory);
 
 			_consumers.Add(kc);
+			_dispatchers.Add(swimLaneBasedDispatcher);
 
 			kc.Start();
 			
 			_logger.LogDebug($"-{logContext}");
 			return new MessageSubscription(() =>
 			{
+				swimLaneBasedDispatcher.Stop();
+				_dispatchers.Remove(swimLaneBasedDispatcher);
 				kc.Dispose();
 				_consumers.Remove(kc);
 			});
@@ -104,11 +108,19 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 		public void Close()
 		{
 			_logger.LogDebug($"+{nameof(Close)}");
+			
+			foreach (SwimlaneBasedDispatcher dispatcher in _dispatchers)
+			{
+				dispatcher.Stop();
+			}
+			_dispatchers.Clear();
+
 			foreach (EventuateKafkaConsumer consumer in _consumers)
 			{
 				consumer.Dispose();
 			}
 			_consumers.Clear();
+			
 			_logger.LogDebug($"-{nameof(Close)}");
 		}
 

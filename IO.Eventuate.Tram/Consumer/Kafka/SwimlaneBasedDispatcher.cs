@@ -44,5 +44,19 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 			swimlaneDispatcher.Dispatch(message, target);
 			_logger.LogDebug($"-{logContext}");
 		}
+
+		/// <summary>
+		/// Stop the dispatcher from processing any further messages
+		/// </summary>
+		public void Stop()
+		{
+			var logContext = $"{nameof(Stop)} for {_dispatcherContext}";
+			_logger.LogDebug($"+{logContext}");
+			foreach (SwimlaneDispatcher dispatcher in _map.Values)
+			{
+				dispatcher.Stop();
+			}
+			_logger.LogDebug($"-{logContext}");
+		}
 	}
 }
