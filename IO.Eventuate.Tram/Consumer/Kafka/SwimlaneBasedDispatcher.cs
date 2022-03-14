@@ -7,6 +7,9 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 {
 	public class SwimlaneBasedDispatcher
 	{
+		private readonly object _lockObject = new object();
+		private bool _dispatcherStopped;
+
 		private readonly ConcurrentDictionary<int, SwimlaneDispatcher> _map = new ConcurrentDictionary<int, SwimlaneDispatcher>();
 		private readonly string _subscriberId;
 		private readonly ILoggerFactory _loggerFactory;
@@ -38,6 +41,16 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 				else
 				{
 					_logger.LogDebug($"{logContext}: Using newly created SwimlaneDispatcher");
+
+					// If the dispatcher is stopped, make sure we stop the new swim lane dispatcher
+					lock (_lockObject)
+					{
+						if (_dispatcherStopped)
+						{
+							_logger.LogDebug($"{logContext}: Stopping newly created SwimlaneDispatcher");
+							r.Stop();
+						}
+					}
 				}
 			}
 
@@ -52,10 +65,15 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 		{
 			var logContext = $"{nameof(Stop)} for {_dispatcherContext}";
 			_logger.LogDebug($"+{logContext}");
-			foreach (SwimlaneDispatcher dispatcher in _map.Values)
+			lock (_lockObject)
 			{
-				dispatcher.Stop();
+				_dispatcherStopped = true;
+				foreach (SwimlaneDispatcher dispatcher in _map.Values)
+				{
+					dispatcher.Stop();
+				}
 			}
+
 			_logger.LogDebug($"-{logContext}");
 		}
 	}
