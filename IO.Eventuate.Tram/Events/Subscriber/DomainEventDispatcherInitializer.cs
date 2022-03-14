@@ -30,6 +30,11 @@ namespace IO.Eventuate.Tram.Events.Subscriber
 
 		public Task StopAsync(CancellationToken cancellationToken)
 		{
+			foreach (DomainEventDispatcher domainEventDispatcher in _domainEventDispatchers)
+			{
+				domainEventDispatcher.Stop();
+			}
+			
 			return Task.CompletedTask;
 		}
 	}

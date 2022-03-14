@@ -22,6 +22,8 @@ namespace IO.Eventuate.Tram.Events.Subscriber
 		private readonly IMessageConsumer _messageConsumer;
 		private readonly IEventTypeNamingStrategy _eventTypeNamingStrategy;
 
+		private IMessageSubscription _subscription;
+
 		public DomainEventDispatcher(string subscriberId, DomainEventHandlers domainEventHandlers,
 			IMessageConsumer messageConsumer, IEventTypeNamingStrategy eventTypeNamingStrategy,
 			ILogger<DomainEventDispatcher> logger)
@@ -37,8 +39,13 @@ namespace IO.Eventuate.Tram.Events.Subscriber
 
 		public void Initialize()
 		{
-			_messageConsumer.Subscribe(_subscriberId, _domainEventHandlers.GetAggregateTypes(),
+			_subscription = _messageConsumer.Subscribe(_subscriberId, _domainEventHandlers.GetAggregateTypes(),
 				MessageHandler);
+		}
+
+		public void Stop()
+		{
+			_subscription?.Unsubscribe();
 		}
 
 		public void MessageHandler(IMessage message, IServiceProvider serviceProvider)
