@@ -37,10 +37,16 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 			_logger.LogDebug($"+{logContext}");
 			lock (_lockObject)
 			{
+				if (_dispatcherStopped)
+				{
+					_logger.LogDebug($"{logContext}: Ignoring message because dispatcher is stopped");
+					return;
+				}
+				
 				var queuedMessage = new QueuedMessage(message, messageConsumer);
 				_queue.Enqueue(queuedMessage);
 				// Start a message processor if one is not running
-				if (!_running && !_dispatcherStopped)
+				if (!_running)
 				{
 					_logger.LogDebug($"{logContext}: Added message and starting message processor");
 					_running = true;
@@ -109,35 +115,43 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 			_logger.LogDebug($"+{logContext}");
 			lock (_lockObject)
 			{
+				if (_dispatcherStopped)
+				{
+					return;
+				}
+				_dispatcherStopped = true;
+				
+				// Cancellation token source may be null if Dispatch method was never called
 				if (_cancellationTokenSource == null)
 				{
 					return;
 				}
-				
-				_cancellationTokenSource.Cancel();
+			}
 
-				try
+			_cancellationTokenSource.Cancel();
+
+			try
+			{
+				_processQueuedMessagesTask.Wait();
+			}
+			catch (AggregateException e)
+			{
+				foreach (Exception exception in e.InnerExceptions)
 				{
-					_processQueuedMessagesTask.Wait();
-				}
-				catch (AggregateException e)
-				{
-					foreach (Exception exception in e.InnerExceptions)
+					if (exception is OperationCanceledException)
 					{
-						if (exception is OperationCanceledException)
-						{
-							_logger.LogDebug($"{logContext}: Cancelled process message queue task");
-						}
-						else
-						{
-							throw exception;
-						}
+						_logger.LogDebug($"{logContext}: Cancelled process message queue task");
+					}
+					else
+					{
+						throw exception;
 					}
 				}
-				_cancellationTokenSource.Dispose();
-				_cancellationTokenSource = null;
-				_dispatcherStopped = true;
 			}
+			
+			_cancellationTokenSource.Dispose();
+			_cancellationTokenSource = null;
+			
 			_logger.LogDebug($"-{logContext}");
 		}
 
