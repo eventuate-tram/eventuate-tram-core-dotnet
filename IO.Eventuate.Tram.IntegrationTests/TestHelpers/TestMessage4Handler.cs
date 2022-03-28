@@ -1,5 +1,4 @@
-﻿using System;
-using IO.Eventuate.Tram.Events.Subscriber;
+﻿using IO.Eventuate.Tram.Events.Subscriber;
 using Microsoft.Extensions.Logging;
 
 namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers

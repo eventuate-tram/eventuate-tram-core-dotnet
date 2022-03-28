@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using IO.Eventuate.Tram.Messaging.Producer;
+﻿using IO.Eventuate.Tram.Messaging.Producer;
 using NUnit.Framework;
 
 namespace IO.Eventuate.Tram.UnitTests.Messaging.Producer

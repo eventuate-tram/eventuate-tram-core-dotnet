@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -81,6 +82,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             TestMessageType2 msg2 = new TestMessageType2("Msg2", 2);
             TestMessageType3 msg3 = new TestMessageType3("Msg3", 3);
             TestMessageType4 msg4 = new TestMessageType4("Msg4", 4);
+            TestMessageTypeDelay msgD = new TestMessageTypeDelay("MsgD", 5);
             TestEventConsumer consumer = GetTestConsumer();
 
             // Act
@@ -88,6 +90,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             GetTestPublisher().Publish(AggregateType12, AggregateType12, new List<IDomainEvent> {msg2});
             GetTestPublisher().Publish(AggregateType34, AggregateType34, new List<IDomainEvent> {msg3});
             GetTestPublisher().Publish(AggregateType34, AggregateType34, new List<IDomainEvent> {msg4});
+            GetTestPublisher().Publish(AggregateTypeDelay, AggregateTypeDelay, new List<IDomainEvent> {msgD});
 
             // Allow time for messages to process
             int count = 10;
@@ -101,7 +104,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
 
             // Assert
             Assert.That(GetDbContext().Messages.Count(),
-                Is.EqualTo(4), "Number of messages produced");
+                Is.EqualTo(5), "Number of messages produced");
             Assert.That(GetDbContext().Messages.Count(msg => msg.Published == 0),
                 Is.EqualTo(0), "Number of unpublished messages");
             foreach (Type eventType in consumer.GetEventTypes())
@@ -115,15 +118,16 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             }
 
             Assert.That(consumer.TotalMessageCount(),
-                Is.EqualTo(4), "Total number of messages received by consumer");
+                Is.EqualTo(5), "Total number of messages received by consumer");
             Assert.That(GetDbContext().ReceivedMessages.Count(msg => msg.MessageId != null),
-                Is.EqualTo(4), "Number of received messages");
+                Is.EqualTo(5), "Number of received messages");
             msg1.AssertGoodMessageReceived(consumer.GetEventStatistics(typeof(TestMessageType1)).ReceivedMessages[0]);
             msg2.AssertGoodMessageReceived(consumer.GetEventStatistics(typeof(TestMessageType2)).ReceivedMessages[0]);
             msg3.AssertGoodMessageReceived(consumer.GetEventStatistics(typeof(TestMessageType3)).ReceivedMessages[0]);
             msg4.AssertGoodMessageReceived(consumer.GetEventStatistics(typeof(TestMessageType4)).ReceivedMessages[0]);
+            msgD.AssertGoodMessageReceived(consumer.GetEventStatistics(typeof(TestMessageTypeDelay)).ReceivedMessages[0]);
 
-            GetTestMessageInterceptor()?.AssertCounts(4, 4, 4, 4, 4, 4);
+            GetTestMessageInterceptor()?.AssertCounts(5, 5, 5, 5, 5, 5);
         }
 
         [Test]
@@ -336,6 +340,44 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             msg1.AssertGoodMessageReceived(eventStatistics.ReceivedMessages[0]);
 
             GetTestMessageInterceptor()?.AssertCounts(1, 1, 1, 1, 1, 1);
+        }
+        
+        [Test]
+        public async Task PublishAsync_TestHostShutdownDuringProcessing_CurrentMessageProcessedAndOtherNextMessageNotStarted()
+        {
+            // Arrange
+            TestMessageTypeDelay msgA = new TestMessageTypeDelay($"msgA-{Guid.NewGuid()}", 1);
+            TestMessageTypeDelay msgB = new TestMessageTypeDelay($"msgB-{Guid.NewGuid()}", 2);
+            TestEventConsumer.EventStatistics eventStatistics = GetTestConsumer().GetEventStatistics(
+                typeof(TestMessageTypeDelay));
+
+            // Act - Publish some type 3 messages
+            await GetTestPublisher().PublishAsync(AggregateTypeDelay, AggregateTypeDelay, new List<IDomainEvent> {msgA, msgB});
+            
+            // Wait for first message to be received and dispose test host
+            int count = 10;
+            while (eventStatistics.ReceivedMessages.Count < 1 && count > 0)
+            {
+                Thread.Sleep(1000);
+                count--;
+            }
+            string[] pingsBeforeShutdown = await File.ReadAllLinesAsync(PingFileName);
+            DisposeTestHost();
+            string[] pingsAfterShutdown = await File.ReadAllLinesAsync(PingFileName);
+            
+            // Allow time to pass
+            Thread.Sleep(TestEventConsumer.MessageType3ProcessingDelay);
+            string[] delayedPings = await File.ReadAllLinesAsync(PingFileName);
+            
+            // Assert - First message processing started but not completed before shutdown
+            Assert.That(pingsBeforeShutdown.Length, Is.EqualTo(1));
+            Assert.That(pingsBeforeShutdown[0], Contains.Substring("Received event").And.Contains(msgA.Name));
+            // Verify first message processing completed by end of shutdown
+            Assert.That(pingsAfterShutdown.Length, Is.EqualTo(2));
+            Assert.That(pingsAfterShutdown[1], Contains.Substring($"Processed event").And.Contains(msgA.Name));
+            // Verify second message not started after shutdown
+            Assert.That(delayedPings.Length, Is.EqualTo(2));
+            Assert.That(delayedPings, Is.EquivalentTo(pingsAfterShutdown));
         }
 
         private void AssertMessagesArePublishedAndConsumed(TestEventConsumer.EventStatistics eventStatistics)

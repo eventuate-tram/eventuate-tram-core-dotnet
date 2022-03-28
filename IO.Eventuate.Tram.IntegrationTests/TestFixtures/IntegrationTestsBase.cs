@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Confluent.Kafka;
@@ -9,7 +10,6 @@ using IO.Eventuate.Tram.Events.Publisher;
 using IO.Eventuate.Tram.IntegrationTests.TestHelpers;
 using IO.Eventuate.Tram.Local.Kafka.Consumer;
 using IO.Eventuate.Tram.Messaging.Common;
-using IO.Eventuate.Tram.Messaging.Consumer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,7 +24,9 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
         private string _subscriberId = "xx";
         protected const string AggregateType12 = "TestMessage12Topic";
         protected const string AggregateType34 = "TestMessage34Topic";
+        protected const string AggregateTypeDelay = "TestMessageDelayTopic";
         protected string EventuateDatabaseSchemaName = "eventuate";
+        public static string PingFileName = "ping.txt";
 
         protected TestSettings TestSettings;
 
@@ -57,6 +59,9 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
         {
             EventuateDatabaseSchemaName = schema;
             _subscriberId = Guid.NewGuid().ToString();
+            
+            // Clear the ping file
+            File.WriteAllText(PingFileName, string.Empty);
 
             if (_host == null)
             {
@@ -83,7 +88,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             {
                 using (var admin = new AdminClientBuilder(config).Build())
                 {
-                    await admin.DeleteTopicsAsync(new[] {AggregateType12, AggregateType34});
+                    await admin.DeleteTopicsAsync(new[] {AggregateType12, AggregateType34, AggregateTypeDelay});
                 }
             }
             catch (DeleteTopicsException e)
@@ -109,6 +114,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             TestContext.WriteLine("  Dispatcher Id:     {0}", _subscriberId);
             TestContext.WriteLine("  Aggregate Type 12: {0}", AggregateType12);
             TestContext.WriteLine("  Aggregate Type 34: {0}", AggregateType34);
+            TestContext.WriteLine("  Aggregate Type Delay: {0}", AggregateTypeDelay);
 
             TestContext.WriteLine("Test Results");
             TestContext.WriteLine("  N Messages in DB:  {0}", _dbContext.Messages.Count());
@@ -166,7 +172,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
                     provider =>
                     {
                         var consumer = provider.GetRequiredService<TestEventConsumer>();
-                        return consumer.DomainEventHandlers(AggregateType12, AggregateType34);
+                        return consumer.DomainEventHandlers(AggregateType12, AggregateType34, AggregateTypeDelay);
                     })
                 .SetConsumerConfigProperties(consumerConfigProperties)
                 .Build<TestEventConsumer>(withInterceptor);
@@ -179,8 +185,6 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             if (_host == null)
                 return;
 
-            var messageConsumer = _host.Services.GetService<IMessageConsumer>();
-            messageConsumer.Close();
             _host.StopAsync().Wait();
             _host.Dispose();
             _host = null;

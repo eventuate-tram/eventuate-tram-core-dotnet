@@ -87,6 +87,8 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers
                     services.AddSingleton<TConsumerType>();
                     services.AddEventuateTramDomainEventDispatcher(_subscriberId, _domainEventHandlersFactory);
                     services.AddSingleton<TestMessage4Handler>();
+
+                    services.Configure<HostOptions>((options) => options.ShutdownTimeout = TimeSpan.FromSeconds(30));
                 })
                 .Build();
             return _host;

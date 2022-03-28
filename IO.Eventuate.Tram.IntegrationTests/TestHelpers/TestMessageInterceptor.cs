@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using IO.Eventuate.Tram.Messaging.Common;
 using NUnit.Framework;
 
