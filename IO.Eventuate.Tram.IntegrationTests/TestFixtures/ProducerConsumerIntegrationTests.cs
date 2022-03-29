@@ -78,6 +78,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
         public void Publish_MultipleSubscribedMessageTypes_AllMessagesReceived()
         {
             // Arrange
+            int numberOfEvents = 5;
             TestMessageType1 msg1 = new TestMessageType1("Msg1", 1, 1.2);
             TestMessageType2 msg2 = new TestMessageType2("Msg2", 2);
             TestMessageType3 msg3 = new TestMessageType3("Msg3", 3);
@@ -94,7 +95,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
 
             // Allow time for messages to process
             int count = 10;
-            while (consumer.TotalMessageCount() < 4 && count > 0)
+            while (consumer.TotalMessageCount() < numberOfEvents && count > 0)
             {
                 Thread.Sleep(1000);
                 count--;
@@ -104,7 +105,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
 
             // Assert
             Assert.That(GetDbContext().Messages.Count(),
-                Is.EqualTo(5), "Number of messages produced");
+                Is.EqualTo(numberOfEvents), "Number of messages produced");
             Assert.That(GetDbContext().Messages.Count(msg => msg.Published == 0),
                 Is.EqualTo(0), "Number of unpublished messages");
             foreach (Type eventType in consumer.GetEventTypes())
@@ -118,16 +119,16 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             }
 
             Assert.That(consumer.TotalMessageCount(),
-                Is.EqualTo(5), "Total number of messages received by consumer");
+                Is.EqualTo(numberOfEvents), "Total number of messages received by consumer");
             Assert.That(GetDbContext().ReceivedMessages.Count(msg => msg.MessageId != null),
-                Is.EqualTo(5), "Number of received messages");
+                Is.EqualTo(numberOfEvents), "Number of received messages");
             msg1.AssertGoodMessageReceived(consumer.GetEventStatistics(typeof(TestMessageType1)).ReceivedMessages[0]);
             msg2.AssertGoodMessageReceived(consumer.GetEventStatistics(typeof(TestMessageType2)).ReceivedMessages[0]);
             msg3.AssertGoodMessageReceived(consumer.GetEventStatistics(typeof(TestMessageType3)).ReceivedMessages[0]);
             msg4.AssertGoodMessageReceived(consumer.GetEventStatistics(typeof(TestMessageType4)).ReceivedMessages[0]);
             msgD.AssertGoodMessageReceived(consumer.GetEventStatistics(typeof(TestMessageTypeDelay)).ReceivedMessages[0]);
 
-            GetTestMessageInterceptor()?.AssertCounts(5, 5, 5, 5, 5, 5);
+            GetTestMessageInterceptor()?.AssertCounts(numberOfEvents, numberOfEvents, numberOfEvents, numberOfEvents, numberOfEvents, numberOfEvents);
         }
 
         [Test]
