@@ -94,7 +94,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             GetTestPublisher().Publish(AggregateTypeDelay, AggregateTypeDelay, new List<IDomainEvent> {msgD});
 
             // Allow time for messages to process
-            int count = 10;
+            int count = 15;
             while (consumer.TotalMessageCount() < numberOfEvents && count > 0)
             {
                 Thread.Sleep(1000);
@@ -122,12 +122,14 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
                 Is.EqualTo(numberOfEvents), "Total number of messages received by consumer");
             Assert.That(GetDbContext().ReceivedMessages.Count(msg => msg.MessageId != null),
                 Is.EqualTo(numberOfEvents), "Number of received messages");
-            msg1.AssertGoodMessageReceived(consumer.GetEventStatistics(typeof(TestMessageType1)).ReceivedMessages[0]);
-            msg2.AssertGoodMessageReceived(consumer.GetEventStatistics(typeof(TestMessageType2)).ReceivedMessages[0]);
-            msg3.AssertGoodMessageReceived(consumer.GetEventStatistics(typeof(TestMessageType3)).ReceivedMessages[0]);
-            msg4.AssertGoodMessageReceived(consumer.GetEventStatistics(typeof(TestMessageType4)).ReceivedMessages[0]);
-            msgD.AssertGoodMessageReceived(consumer.GetEventStatistics(typeof(TestMessageTypeDelay)).ReceivedMessages[0]);
-
+            Assert.Multiple(() =>
+            {
+                msg1.AssertGoodMessageReceived(consumer.GetEventStatistics(typeof(TestMessageType1)).ReceivedMessages[0]);
+                msg2.AssertGoodMessageReceived(consumer.GetEventStatistics(typeof(TestMessageType2)).ReceivedMessages[0]);
+                msg3.AssertGoodMessageReceived(consumer.GetEventStatistics(typeof(TestMessageType3)).ReceivedMessages[0]);
+                msg4.AssertGoodMessageReceived(consumer.GetEventStatistics(typeof(TestMessageType4)).ReceivedMessages[0]);
+                msgD.AssertGoodMessageReceived(consumer.GetEventStatistics(typeof(TestMessageTypeDelay)).ReceivedMessages[0]);
+            });
             GetTestMessageInterceptor()?.AssertCounts(numberOfEvents, numberOfEvents, numberOfEvents, numberOfEvents, numberOfEvents, numberOfEvents);
         }
 
