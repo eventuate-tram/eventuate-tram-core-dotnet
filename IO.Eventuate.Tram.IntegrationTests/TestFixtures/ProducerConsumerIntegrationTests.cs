@@ -25,7 +25,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
         [SetUp]
         public async Task Setup()
         {
-            await CleanupKafka();
+            await CleanupKafkaTopics();
             TestSetup(_schema, true, EventuateKafkaConsumerConfigurationProperties.Empty());
             CleanupTest();
         }
@@ -94,7 +94,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             GetTestPublisher().Publish(AggregateTypeDelay, AggregateTypeDelay, new List<IDomainEvent> {msgD});
 
             // Allow time for messages to process
-            int count = 15;
+            int count = 10;
             while (consumer.TotalMessageCount() < numberOfEvents && count > 0)
             {
                 Thread.Sleep(1000);

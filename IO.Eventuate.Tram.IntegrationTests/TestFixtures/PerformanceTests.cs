@@ -15,7 +15,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
         [SetUp]
         public async Task Setup()
         {
-            await CleanupKafka();
+            await CleanupKafkaTopics();
             TestSetup("eventuate", false, EventuateKafkaConsumerConfigurationProperties.Empty());
             CleanupTest();
         }

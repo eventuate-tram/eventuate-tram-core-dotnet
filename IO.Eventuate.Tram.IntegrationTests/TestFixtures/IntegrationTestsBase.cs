@@ -80,27 +80,19 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             GetTestMessageInterceptor()?.Reset();
         }
 
-        protected async Task CleanupKafka()
+        protected async Task CleanupKafkaTopics()
         {
             var config = new AdminClientConfig();
             config.BootstrapServers = TestSettings.KafkaBootstrapServers;
-            try
+            using var admin = new AdminClientBuilder(config).Build();
+            Metadata kafkaMetadata = admin.GetMetadata(TimeSpan.FromSeconds(10));
+            foreach (var topic in new[] {AggregateType12, AggregateType34, AggregateTypeDelay})
             {
-                using (var admin = new AdminClientBuilder(config).Build())
+                TopicMetadata paMessagesMetadata = kafkaMetadata.Topics.Find(t => t.Topic.Equals(topic));
+                if (paMessagesMetadata != null)
                 {
-                    await admin.DeleteTopicsAsync(new[] {AggregateType12, AggregateType34, AggregateTypeDelay});
-                }
-            }
-            catch (DeleteTopicsException e)
-            {
-                // Don't fail if topic wasn't found (nothing to delete)
-                if (e.Results.Where(r => r.Error.IsError).All(r => r.Error.Code == ErrorCode.UnknownTopicOrPart))
-                {
-                    TestContext.WriteLine(e.Message);
-                }
-                else
-                {
-                    throw;
+                    await admin.DeleteRecordsAsync(paMessagesMetadata.Partitions.Select(p => new TopicPartitionOffset(new TopicPartition(
+                        topic, p.PartitionId), Offset.End)));
                 }
             }
         }
