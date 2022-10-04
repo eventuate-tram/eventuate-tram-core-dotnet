@@ -94,6 +94,10 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
                     await admin.DeleteRecordsAsync(paMessagesMetadata.Partitions.Select(p => new TopicPartitionOffset(new TopicPartition(
                         topic, p.PartitionId), Offset.End)));
                 }
+                else
+                {
+                    TestContext.WriteLine($"Topic {topic} did not exist.");
+                }
             }
         }
 
