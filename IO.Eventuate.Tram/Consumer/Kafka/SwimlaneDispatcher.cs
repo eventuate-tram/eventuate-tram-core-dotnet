@@ -24,14 +24,16 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 		private bool _dispatcherStopped;
 		private CancellationTokenSource _cancellationTokenSource;
 		private Task _processQueuedMessagesTask;
+		private SwimlaneDispatcherBacklog _consumerStatus;
 
 		public SwimlaneDispatcher(string subscriberId, int swimlane, ILogger<SwimlaneDispatcher> logger)
 		{
 			_logger = logger;
 			_dispatcherContext = $"SubscriberId='{subscriberId}', SwimLane='{swimlane}'";
+			_consumerStatus = new SwimlaneDispatcherBacklog(_queue);
 		}
 
-		public void Dispatch(IMessage message, Action<IMessage> messageConsumer)
+		public SwimlaneDispatcherBacklog Dispatch(IMessage message, Action<IMessage> messageConsumer)
 		{
 			var logContext = $"{nameof(Dispatch)} for {_dispatcherContext}, MessageId={message.Id}";
 			_logger.LogDebug($"+{logContext}");
@@ -40,7 +42,7 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 				if (_dispatcherStopped)
 				{
 					_logger.LogDebug($"{logContext}: Ignoring message because dispatcher is stopped");
-					return;
+					return _consumerStatus;
 				}
 				
 				var queuedMessage = new QueuedMessage(message, messageConsumer);
@@ -58,6 +60,7 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 				}
 			}
 			_logger.LogDebug($"-{logContext}");
+			return _consumerStatus;
 		}
 
 		private void StartMessageProcessor()
@@ -153,19 +156,6 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 			_cancellationTokenSource = null;
 			
 			_logger.LogDebug($"-{logContext}");
-		}
-
-		private class QueuedMessage
-		{
-			public QueuedMessage(IMessage message, Action<IMessage> messageConsumer)
-			{
-				Message = message;
-				MessageConsumer = messageConsumer;
-			}
-			
-			public IMessage Message { get; }
-
-			public Action<IMessage> MessageConsumer { get; }
 		}
 	}
 }

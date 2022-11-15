@@ -10,6 +10,6 @@ using Confluent.Kafka;
 
 namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 {
-	public delegate void EventuateKafkaConsumerMessageHandler(ConsumeResult<string, string> consumeResult,
+	public delegate IMessageConsumerBacklog EventuateKafkaConsumerMessageHandler(ConsumeResult<string, string> consumeResult,
 		Action<Exception> callback);
 }

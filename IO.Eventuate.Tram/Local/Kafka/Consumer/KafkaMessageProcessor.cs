@@ -7,6 +7,7 @@
 
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using Confluent.Kafka;
 using Microsoft.Extensions.Logging;
 
@@ -29,7 +30,9 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 			new ConcurrentQueue<ConsumeResult<string, string>>();
 
 		private volatile KafkaMessageProcessorFailedException _failed;
-		
+
+		private HashSet<IMessageConsumerBacklog> consumerBacklogs = new();
+
 		public KafkaMessageProcessor(string subscriberId,
 			EventuateKafkaConsumerMessageHandler handler,
 			ILogger<KafkaMessageProcessor> logger)
@@ -48,7 +51,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 			ThrowExceptionIfHandlerFailed();
 			
 			_offsetTracker.NoteUnprocessed(new TopicPartition(record.Topic, record.Partition), record.Offset);
-			_handler(record, e =>
+			IMessageConsumerBacklog consumerBacklog = _handler(record, e =>
 			{
 				if (e != null)
 				{
@@ -61,6 +64,12 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 					_processedRecords.Enqueue(record);
 				}
 			});
+
+			if (consumerBacklog != null)
+			{
+				consumerBacklogs.Add(consumerBacklog);
+			}
+			
 			_logger.LogDebug($"-{logContext}");
 		}
 
@@ -107,6 +116,11 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 			var logContext = $"{nameof(GetPending)} for {_loggingObjectContext}";
 			_logger.LogDebug($"{logContext}");
 			return _offsetTracker;
+		}
+
+		public int GetBacklog()
+		{
+			return consumerBacklogs.Sum(cb => cb.size());
 		}
 	}
 }

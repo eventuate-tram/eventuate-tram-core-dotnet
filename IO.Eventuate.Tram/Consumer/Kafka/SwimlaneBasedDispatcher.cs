@@ -24,7 +24,7 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 			_dispatcherContext = $"SubscriberId='{subscriberId}'";
 		}
 
-		public void Dispatch(IMessage message, int swimlane, Action<IMessage> target)
+		public SwimlaneDispatcherBacklog Dispatch(IMessage message, int swimlane, Action<IMessage> target)
 		{
 			var logContext = $"{nameof(Dispatch)} for {_dispatcherContext}, swimlane={swimlane}, MessageId={message.Id}";
 			_logger.LogDebug($"+{logContext}");
@@ -54,8 +54,10 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 				}
 			}
 
-			swimlaneDispatcher.Dispatch(message, target);
+			SwimlaneDispatcherBacklog backlog = swimlaneDispatcher.Dispatch(message, target);
 			_logger.LogDebug($"-{logContext}");
+
+			return backlog;
 		}
 
 		/// <summary>

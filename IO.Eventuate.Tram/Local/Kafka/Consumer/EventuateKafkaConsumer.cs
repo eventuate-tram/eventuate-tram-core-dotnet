@@ -24,10 +24,12 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 	{
 		private const int ConsumePollMilliseconds = 100;
 		private const int AdminClientTimeoutMilliseconds = 10;
-
+		
 		private readonly string _subscriberId;
 		private readonly EventuateKafkaConsumerMessageHandler _handler;
 		private readonly IList<string> _topics;
+		private readonly BackPressureConfig _backPressureConfig;
+		private readonly long _pollTimeout;
 		private readonly ILoggerFactory _loggerFactory;
 
 		private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
@@ -50,6 +52,8 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 			_subscriberId = subscriberId;
 			_handler = handler;
 			_topics = topics;
+			_backPressureConfig = eventuateKafkaConsumerConfigurationProperties.BackPressure;
+			_pollTimeout = eventuateKafkaConsumerConfigurationProperties.Timeout;
 			_loggerFactory = loggerFactory;
 			_logger = loggerFactory.CreateLogger<EventuateKafkaConsumer>();
 
@@ -103,6 +107,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 				IConsumer<string, string> consumer = new ConsumerBuilder<string, string>(_consumerProperties).Build();
 				var processor = new KafkaMessageProcessor(_subscriberId, _handler,
 					_loggerFactory.CreateLogger<KafkaMessageProcessor>());
+				var backPressureManager = new BackPressureManager(_backPressureConfig);
 
 				using (IAdminClient adminClient = new DependentAdminClientBuilder(consumer.Handle).Build())
 				{
@@ -145,6 +150,22 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 								}
 
 								MaybeCommitOffsets(consumer, processor);
+
+								int backlog = processor.GetBacklog();
+								BackPressureActions actions = backPressureManager.Update(record, backlog);
+
+								if (actions.Pause.Any())
+								{
+									_logger.LogInformation(
+										$"{logContext}: subscriber {_subscriberId} pausing due to backlog {backlog} > {_backPressureConfig.High}");
+									consumer.Pause(actions.Pause);
+								}
+								if (actions.Resume.Any())
+								{
+									_logger.LogInformation(
+										$"{logContext}: subscriber {_subscriberId} resuming due to backlog {backlog} <= {_backPressureConfig.Low}");
+									consumer.Resume(actions.Resume);
+								}
 							}
 							catch (ConsumeException e)
 							{
