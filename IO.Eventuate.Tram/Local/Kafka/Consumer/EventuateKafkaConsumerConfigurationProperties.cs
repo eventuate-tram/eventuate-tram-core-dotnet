@@ -12,8 +12,8 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 	public class EventuateKafkaConsumerConfigurationProperties
 	{
 		public long Timeout { get; set; }
-		
-		public BackPressureConfig BackPressure { get; set; }
+
+		public BackPressureConfig BackPressure { get; set; } = new();
 		
 		public IDictionary<string, string> Properties { get; } = new Dictionary<string, string>();
 

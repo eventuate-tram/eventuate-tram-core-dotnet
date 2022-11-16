@@ -80,18 +80,16 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 			});
 		}
 
-		public void Handle(IMessage message, Action<Exception> completionCallback, string subscriberId,
+		private void Handle(IMessage message, Action<Exception> completionCallback, string subscriberId,
 			Action<SubscriberIdAndMessage, IServiceProvider> decoratedHandler)
 		{
 			try
 			{
 				// Creating a service scope and passing the scope's service provider to handlers
 				// so they can resolve scoped services
-				using (IServiceScope scope = _serviceScopeFactory.CreateScope())
-				{
-					decoratedHandler(new SubscriberIdAndMessage(subscriberId, message), scope.ServiceProvider);
-					completionCallback(null);
-				}
+				using IServiceScope scope = _serviceScopeFactory.CreateScope();
+				decoratedHandler(new SubscriberIdAndMessage(subscriberId, message), scope.ServiceProvider);
+				completionCallback(null);
 			}
 			catch (Exception e)
 			{
