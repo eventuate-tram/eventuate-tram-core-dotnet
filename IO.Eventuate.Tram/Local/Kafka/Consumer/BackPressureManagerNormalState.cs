@@ -11,6 +11,6 @@ public class BackPressureManagerNormalState : BackPressureManagerState
 	
 	public BackPressureManagerStateAndActions Update(HashSet<TopicPartition> allTopicPartitions, int backlog, BackPressureConfig backPressureConfig)
 	{
-		return backlog > backPressureConfig.High ? BackPressureManagerPausedState.TransitionTo(allTopicPartitions) : new BackPressureManagerStateAndActions(this);
+		return backlog > backPressureConfig.PauseThreshold ? BackPressureManagerPausedState.TransitionTo(allTopicPartitions) : new BackPressureManagerStateAndActions(this);
 	}
 }

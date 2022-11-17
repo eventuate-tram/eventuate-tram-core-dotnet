@@ -21,7 +21,7 @@ public class BackPressureManagerPausedState : BackPressureManagerState
 	public BackPressureManagerStateAndActions Update(HashSet<TopicPartition> allTopicPartitions, int backlog,
 		BackPressureConfig backPressureConfig)
 	{
-		if (backlog <= backPressureConfig.Low)
+		if (backlog <= backPressureConfig.ResumeThreshold)
 		{
 			return BackPressureManagerNormalState.TransitionTo(_suspendedPartitions);
 		}

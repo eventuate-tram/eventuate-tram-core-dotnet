@@ -157,13 +157,13 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 								if (actions.Pause.Any())
 								{
 									_logger.LogInformation(
-										$"{logContext}: subscriber {_subscriberId} pausing due to backlog {backlog} > {_backPressureConfig.High}");
+										$"{logContext}: subscriber {_subscriberId} pausing due to backlog {backlog} > {_backPressureConfig.PauseThreshold}");
 									consumer.Pause(actions.Pause);
 								}
 								if (actions.Resume.Any())
 								{
 									_logger.LogInformation(
-										$"{logContext}: subscriber {_subscriberId} resuming due to backlog {backlog} <= {_backPressureConfig.Low}");
+										$"{logContext}: subscriber {_subscriberId} resuming due to backlog {backlog} <= {_backPressureConfig.ResumeThreshold}");
 									consumer.Resume(actions.Resume);
 								}
 							}

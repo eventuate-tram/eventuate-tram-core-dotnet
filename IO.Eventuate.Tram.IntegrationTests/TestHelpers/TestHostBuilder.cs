@@ -70,7 +70,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers
                             // Use a model cache key factory that ensures a new model is created if EventuateSchema is changed
                             .ReplaceService<IModelCacheKeyFactory, DynamicEventuateSchemaModelCacheKeyFactory>();
                     });
-                    services.AddEventuateTramSqlKafkaTransport(_eventuateDatabaseSchemaName, _kafkaBootstrapServers, EventuateKafkaConsumerConfigurationProperties.Empty(),
+                    services.AddEventuateTramSqlKafkaTransport(_eventuateDatabaseSchemaName, _kafkaBootstrapServers, _consumerConfigProperties,
                         (provider, o) =>
                         {
                             o.UseSqlServer(_sqlConnectionString);
