@@ -2,8 +2,8 @@
 
 public class BackPressureManagerStateAndActions
 {
-	public readonly BackPressureActions Actions;
-	public readonly IBackPressureManagerState State;
+	internal readonly BackPressureActions Actions;
+	internal readonly IBackPressureManagerState State;
 
 	public BackPressureManagerStateAndActions(BackPressureActions actions, IBackPressureManagerState state) {
 		Actions = actions;

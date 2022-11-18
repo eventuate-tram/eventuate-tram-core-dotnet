@@ -7,7 +7,7 @@ public class SwimlaneDispatcherBacklog : IMessageConsumerBacklog
 {
 	private readonly ConcurrentQueue<QueuedMessage> _queue;
 	
-	public SwimlaneDispatcherBacklog(ConcurrentQueue<QueuedMessage> queue) {
+	internal SwimlaneDispatcherBacklog(ConcurrentQueue<QueuedMessage> queue) {
 		_queue = queue;
 	}
 	

@@ -16,8 +16,7 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 
 		// The java solution used a blocking queue but none of the methods that use
 		// the blocking feature. ConcurrentQueue is simpler.
-		private readonly ConcurrentQueue<QueuedMessage> _queue =
-			new ConcurrentQueue<QueuedMessage>();
+		private readonly ConcurrentQueue<QueuedMessage> _queue = new();
 
 		// The running flag must only be accessed within a lock(_lockObject)
 		private bool _running;

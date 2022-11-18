@@ -24,7 +24,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 	{
 		private const int ConsumePollMilliseconds = 100;
 		private const int AdminClientTimeoutMilliseconds = 10;
-		
+
 		private readonly string _subscriberId;
 		private readonly EventuateKafkaConsumerMessageHandler _handler;
 		private readonly IList<string> _topics;
