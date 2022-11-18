@@ -22,7 +22,6 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 	/// </summary>
 	public class EventuateKafkaConsumer : IDisposable
 	{
-		private const int ConsumePollMilliseconds = 100;
 		private const int AdminClientTimeoutMilliseconds = 10;
 
 		private readonly string _subscriberId;
@@ -38,9 +37,8 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 		private readonly ILogger _logger;
 
 		private volatile EventuateKafkaConsumerState _state = EventuateKafkaConsumerState.Created;
-		public EventuateKafkaConsumerState State => _state;
 
-		private Task _consumeTask = null;
+		private Task _consumeTask;
 
 		public EventuateKafkaConsumer(string subscriberId,
 			EventuateKafkaConsumerMessageHandler handler,
@@ -53,7 +51,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 			_handler = handler;
 			_topics = topics;
 			_backPressureConfig = eventuateKafkaConsumerConfigurationProperties.BackPressure;
-			_pollTimeout = eventuateKafkaConsumerConfigurationProperties.Timeout;
+			_pollTimeout = eventuateKafkaConsumerConfigurationProperties.PollTimeout;
 			_loggerFactory = loggerFactory;
 			_logger = loggerFactory.CreateLogger<EventuateKafkaConsumer>();
 
@@ -135,7 +133,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 							try
 							{
 								ConsumeResult<string, string> record =
-									consumer.Consume(TimeSpan.FromMilliseconds(ConsumePollMilliseconds));
+									consumer.Consume(TimeSpan.FromMilliseconds(_pollTimeout));
 
 								if (record != null)
 								{
@@ -156,14 +154,14 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 
 								if (actions.PartitionsToPause.Any())
 								{
-									_logger.LogInformation(
-										$"{logContext}: subscriber {_subscriberId} pausing due to backlog {backlog} > {_backPressureConfig.PauseThreshold}");
+									_logger.LogInformation($"{logContext}: subscriber {_subscriberId} pausing " +
+										$"{string.Join(',', actions.PartitionsToPause)} due to backlog {backlog} > {_backPressureConfig.PauseThreshold}");
 									consumer.Pause(actions.PartitionsToPause);
 								}
 								if (actions.PartitionsToResume.Any())
 								{
-									_logger.LogInformation(
-										$"{logContext}: subscriber {_subscriberId} resuming due to backlog {backlog} <= {_backPressureConfig.ResumeThreshold}");
+									_logger.LogInformation($"{logContext}: subscriber {_subscriberId} resuming " +
+										$"{string.Join(',', actions.PartitionsToResume)} due to backlog {backlog} <= {_backPressureConfig.ResumeThreshold}");
 									consumer.Resume(actions.PartitionsToResume);
 								}
 							}

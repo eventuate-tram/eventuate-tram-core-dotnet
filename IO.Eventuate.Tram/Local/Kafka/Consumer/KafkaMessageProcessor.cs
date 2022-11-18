@@ -31,7 +31,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 
 		private volatile KafkaMessageProcessorFailedException _failed;
 
-		private HashSet<IMessageConsumerBacklog> consumerBacklogs = new();
+		private readonly HashSet<IMessageConsumerBacklog> _consumerBacklogs = new();
 
 		public KafkaMessageProcessor(string subscriberId,
 			EventuateKafkaConsumerMessageHandler handler,
@@ -67,7 +67,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 
 			if (consumerBacklog != null)
 			{
-				consumerBacklogs.Add(consumerBacklog);
+				_consumerBacklogs.Add(consumerBacklog);
 			}
 			
 			_logger.LogDebug($"-{logContext}");
@@ -120,7 +120,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 
 		public int GetBacklog()
 		{
-			return consumerBacklogs.Sum(cb => cb.Size());
+			return _consumerBacklogs.Sum(cb => cb.Size());
 		}
 	}
 }

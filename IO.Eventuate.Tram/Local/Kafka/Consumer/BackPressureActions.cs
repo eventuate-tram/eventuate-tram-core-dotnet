@@ -16,13 +16,13 @@ public class BackPressureActions
 	}
 
 	public static readonly BackPressureActions None =
-		new(ImmutableHashSet<TopicPartition>.Empty,  ImmutableHashSet<TopicPartition>.Empty);
+		new(ImmutableHashSet<TopicPartition>.Empty, ImmutableHashSet<TopicPartition>.Empty);
 	
 	public static BackPressureActions Pause(ISet<TopicPartition> topicPartitions) {
-		return new BackPressureActions(topicPartitions,  ImmutableHashSet<TopicPartition>.Empty);
+		return new BackPressureActions(topicPartitions, ImmutableHashSet<TopicPartition>.Empty);
 	}
 
 	public static BackPressureActions Resume(ISet<TopicPartition> topicPartitions) {
-		return new BackPressureActions( ImmutableHashSet<TopicPartition>.Empty, topicPartitions);
+		return new BackPressureActions(ImmutableHashSet<TopicPartition>.Empty, topicPartitions);
 	}
 }

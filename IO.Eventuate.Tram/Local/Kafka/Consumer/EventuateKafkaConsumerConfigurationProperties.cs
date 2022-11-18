@@ -11,7 +11,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 {
 	public class EventuateKafkaConsumerConfigurationProperties
 	{
-		public long Timeout { get; set; }
+		public long PollTimeout { get; set; } = 100;
 
 		public BackPressureConfig BackPressure { get; set; } = new();
 		
