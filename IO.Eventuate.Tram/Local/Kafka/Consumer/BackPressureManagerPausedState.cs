@@ -3,33 +3,31 @@ using Confluent.Kafka;
 
 namespace IO.Eventuate.Tram.Local.Kafka.Consumer;
 
-public class BackPressureManagerPausedState : BackPressureManagerState
+public class BackPressureManagerPausedState : IBackPressureManagerState
 {
-	private readonly HashSet<TopicPartition> _suspendedPartitions;
+	private readonly ISet<TopicPartition> _suspendedPartitions;
 
-	public BackPressureManagerPausedState(HashSet<TopicPartition> pausedTopic)
+	public BackPressureManagerPausedState(ISet<TopicPartition> pausedTopic)
 	{
 		_suspendedPartitions = pausedTopic;
 	}
 
-	public static BackPressureManagerStateAndActions TransitionTo(HashSet<TopicPartition> allTopicPartitions)
+	public static BackPressureManagerStateAndActions TransitionTo(ISet<TopicPartition> allTopicPartitions)
 	{
-		return new BackPressureManagerStateAndActions(BackPressureActions.pause(allTopicPartitions),
+		return new BackPressureManagerStateAndActions(BackPressureActions.Pause(allTopicPartitions),
 			new BackPressureManagerPausedState(allTopicPartitions));
 	}
 
-	public BackPressureManagerStateAndActions Update(HashSet<TopicPartition> allTopicPartitions, int backlog,
+	public BackPressureManagerStateAndActions Update(ISet<TopicPartition> allTopicPartitions, int backlog,
 		BackPressureConfig backPressureConfig)
 	{
 		if (backlog <= backPressureConfig.ResumeThreshold)
 		{
 			return BackPressureManagerNormalState.TransitionTo(_suspendedPartitions);
 		}
-		else
-		{
-			HashSet<TopicPartition> toSuspend = new HashSet<TopicPartition>(allTopicPartitions);
-			toSuspend.RemoveWhere(topic => _suspendedPartitions.Contains(topic));
-			return new BackPressureManagerStateAndActions(BackPressureActions.pause(toSuspend), this);
-		}
+
+		HashSet<TopicPartition> toSuspend = new HashSet<TopicPartition>(allTopicPartitions);
+		toSuspend.ExceptWith(_suspendedPartitions);
+		return new BackPressureManagerStateAndActions(BackPressureActions.Pause(toSuspend), this);
 	}
 }

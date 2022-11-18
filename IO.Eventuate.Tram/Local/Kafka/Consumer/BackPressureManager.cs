@@ -8,7 +8,7 @@ public class BackPressureManager
 	private readonly BackPressureConfig _backPressureConfig;
 	private readonly HashSet<TopicPartition> _allTopicPartitions = new();
 	
-	private BackPressureManagerState _state = new BackPressureManagerNormalState();
+	private IBackPressureManagerState _state = new BackPressureManagerNormalState();
 
 	public BackPressureManager(BackPressureConfig backPressureConfig)
 	{

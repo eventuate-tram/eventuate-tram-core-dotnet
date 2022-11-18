@@ -154,17 +154,17 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 								int backlog = processor.GetBacklog();
 								BackPressureActions actions = backPressureManager.Update(record, backlog);
 
-								if (actions.Pause.Any())
+								if (actions.PartitionsToPause.Any())
 								{
 									_logger.LogInformation(
 										$"{logContext}: subscriber {_subscriberId} pausing due to backlog {backlog} > {_backPressureConfig.PauseThreshold}");
-									consumer.Pause(actions.Pause);
+									consumer.Pause(actions.PartitionsToPause);
 								}
-								if (actions.Resume.Any())
+								if (actions.PartitionsToResume.Any())
 								{
 									_logger.LogInformation(
 										$"{logContext}: subscriber {_subscriberId} resuming due to backlog {backlog} <= {_backPressureConfig.ResumeThreshold}");
-									consumer.Resume(actions.Resume);
+									consumer.Resume(actions.PartitionsToResume);
 								}
 							}
 							catch (ConsumeException e)

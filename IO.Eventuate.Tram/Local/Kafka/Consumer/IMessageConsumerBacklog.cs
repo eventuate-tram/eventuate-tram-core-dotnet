@@ -2,5 +2,5 @@
 
 public interface IMessageConsumerBacklog
 {
-	int size();
+	int Size();
 }

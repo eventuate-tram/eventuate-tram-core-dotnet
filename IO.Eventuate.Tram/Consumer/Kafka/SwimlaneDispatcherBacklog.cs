@@ -11,7 +11,7 @@ public class SwimlaneDispatcherBacklog : IMessageConsumerBacklog
 		_queue = queue;
 	}
 	
-	public int size()
+	public int Size()
 	{
 		return _queue.Count;
 	}

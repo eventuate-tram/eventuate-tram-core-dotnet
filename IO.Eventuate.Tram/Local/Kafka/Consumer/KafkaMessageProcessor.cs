@@ -120,7 +120,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 
 		public int GetBacklog()
 		{
-			return consumerBacklogs.Sum(cb => cb.size());
+			return consumerBacklogs.Sum(cb => cb.Size());
 		}
 	}
 }

@@ -3,16 +3,16 @@
 public class BackPressureManagerStateAndActions
 {
 	public readonly BackPressureActions Actions;
-	public readonly BackPressureManagerState State;
+	public readonly IBackPressureManagerState State;
 
-	public BackPressureManagerStateAndActions(BackPressureActions actions, BackPressureManagerState state) {
+	public BackPressureManagerStateAndActions(BackPressureActions actions, IBackPressureManagerState state) {
 		Actions = actions;
 		State = state;
 	}
 
-	public BackPressureManagerStateAndActions(BackPressureManagerState state)
+	public BackPressureManagerStateAndActions(IBackPressureManagerState state)
 	{
-		Actions = BackPressureActions.NONE;
+		Actions = BackPressureActions.None;
 		State = state;
 	}
 }

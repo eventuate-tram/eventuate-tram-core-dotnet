@@ -1,27 +1,28 @@
 ﻿using System.Collections.Generic;
+using System.Collections.Immutable;
 using Confluent.Kafka;
 
 namespace IO.Eventuate.Tram.Local.Kafka.Consumer;
 
 public class BackPressureActions
 {
-	public HashSet<TopicPartition> Pause { get; }
-	public HashSet<TopicPartition> Resume { get; }
+	public ISet<TopicPartition> PartitionsToPause { get; }
+	public ISet<TopicPartition> PartitionsToResume { get; }
 
-	public BackPressureActions(HashSet<TopicPartition> pause, HashSet<TopicPartition> resume)
+	public BackPressureActions(ISet<TopicPartition> partitionsToPause, ISet<TopicPartition> partitionsToResume)
 	{
-		Pause = pause;
-		Resume = resume;
+		PartitionsToPause = partitionsToPause;
+		PartitionsToResume = partitionsToResume;
 	}
 
-	public static readonly BackPressureActions NONE =
-		new BackPressureActions(new HashSet<TopicPartition>(), new HashSet<TopicPartition>());
+	public static readonly BackPressureActions None =
+		new(ImmutableHashSet<TopicPartition>.Empty,  ImmutableHashSet<TopicPartition>.Empty);
 	
-	public static BackPressureActions pause(HashSet<TopicPartition> topicPartitions) {
-		return new BackPressureActions(topicPartitions, new HashSet<TopicPartition>());
+	public static BackPressureActions Pause(ISet<TopicPartition> topicPartitions) {
+		return new BackPressureActions(topicPartitions,  ImmutableHashSet<TopicPartition>.Empty);
 	}
 
-	public static BackPressureActions resume(HashSet<TopicPartition> topicPartitions) {
-		return new BackPressureActions(new HashSet<TopicPartition>(), topicPartitions);
+	public static BackPressureActions Resume(ISet<TopicPartition> topicPartitions) {
+		return new BackPressureActions( ImmutableHashSet<TopicPartition>.Empty, topicPartitions);
 	}
 }

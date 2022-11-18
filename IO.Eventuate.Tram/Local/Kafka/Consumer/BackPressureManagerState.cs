@@ -3,7 +3,7 @@ using Confluent.Kafka;
 
 namespace IO.Eventuate.Tram.Local.Kafka.Consumer;
 
-public interface BackPressureManagerState
+public interface IBackPressureManagerState
 {
-	BackPressureManagerStateAndActions Update(HashSet<TopicPartition> allTopicPartitions, int backlog, BackPressureConfig backPressureConfig);
+	BackPressureManagerStateAndActions Update(ISet<TopicPartition> allTopicPartitions, int backlog, BackPressureConfig backPressureConfig);
 }
