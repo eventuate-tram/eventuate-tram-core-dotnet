@@ -31,6 +31,21 @@ services.AddEventuateTramSqlProducer(dbSchemaName, (provider, o) =>
 	});
 ```
 
+### Configuration Properties
+- Customize the maximum amount of time (ms) to poll for a new event:
+```c#
+PollTimeout = 100;
+```
+- Customize the Backpressure behavior. Message consumption will be paused once the size of the unprocessed message
+- queue exceeds the PauseThreshold and resumed once it drops back below the ResumeThreshold.
+```c#
+BackPressure = new BackPressureConfig
+{
+    PauseThreshold = 100,
+    ResumeThreshold = 10
+};
+```
+
 ### Database Setup
 You need to run the [database initialization script](IO.Eventuate.Tram/Database/mssql/initialize-database.sql),
 modifying the database schema $(TRAM_SCHEMA) variable to match what you configured. 
