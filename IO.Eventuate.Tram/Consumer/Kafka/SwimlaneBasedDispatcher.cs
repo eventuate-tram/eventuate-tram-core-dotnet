@@ -26,7 +26,7 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 
 		public SwimlaneDispatcherBacklog Dispatch(IMessage message, int swimlane, Action<IMessage> target)
 		{
-			var logContext = $"{nameof(Dispatch)} for {_dispatcherContext}, swimlane={swimlane}, MessageId={message.Id}";
+			var logContext = $"{nameof(Dispatch)} for {_dispatcherContext}, swimlane='{swimlane}', MessageId={message.Id}";
 			_logger.LogDebug($"+{logContext}");
 			if (!_map.TryGetValue(swimlane, out SwimlaneDispatcher swimlaneDispatcher))
 			{
