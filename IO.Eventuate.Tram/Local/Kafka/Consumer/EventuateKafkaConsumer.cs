@@ -155,7 +155,13 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 									                 $"pause threshold='{_backPressureConfig.PauseThreshold}', " +
 									                 $"resume threshold='{_backPressureConfig.ResumeThreshold}'.");
 								}
-								BackPressureActions actions = backPressureManager.Update(record, backlog);
+
+								var topicPartitions = new HashSet<TopicPartition>();
+								if (record != null)
+								{
+									topicPartitions.Add(new TopicPartition(record.Topic, record.Partition));
+								}
+								BackPressureActions actions = backPressureManager.Update(topicPartitions, backlog);
 
 								if (actions.PartitionsToPause.Any())
 								{

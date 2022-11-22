@@ -15,12 +15,9 @@ public class BackPressureManager
 		_backPressureConfig = backPressureConfig;
 	}
 	
-	public BackPressureActions Update(ConsumeResult<string, string> record, int backlog)
+	public BackPressureActions Update(ISet<TopicPartition> topicPartitions, int backlog)
 	{
-		if (record != null)
-		{
-			_allTopicPartitions.Add(new TopicPartition(record.Topic, record.Partition));
-		}
+		_allTopicPartitions.UnionWith(topicPartitions);
 
 		BackPressureManagerStateAndActions stateAndActions = _state.Update(_allTopicPartitions, backlog, _backPressureConfig);
 		_state = stateAndActions.State;

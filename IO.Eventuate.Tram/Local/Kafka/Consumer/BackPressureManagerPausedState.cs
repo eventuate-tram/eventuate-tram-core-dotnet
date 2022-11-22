@@ -9,7 +9,7 @@ public class BackPressureManagerPausedState : IBackPressureManagerState
 
 	public BackPressureManagerPausedState(ISet<TopicPartition> pausedTopic)
 	{
-		_suspendedPartitions = pausedTopic;
+		_suspendedPartitions = new HashSet<TopicPartition>(pausedTopic);
 	}
 
 	public static BackPressureManagerStateAndActions TransitionTo(ISet<TopicPartition> allTopicPartitions)
@@ -26,8 +26,9 @@ public class BackPressureManagerPausedState : IBackPressureManagerState
 			return BackPressureManagerNormalState.TransitionTo(_suspendedPartitions);
 		}
 
-		HashSet<TopicPartition> toSuspend = new HashSet<TopicPartition>(allTopicPartitions);
+		var toSuspend = new HashSet<TopicPartition>(allTopicPartitions);
 		toSuspend.ExceptWith(_suspendedPartitions);
+		_suspendedPartitions.UnionWith(toSuspend);
 		return new BackPressureManagerStateAndActions(BackPressureActions.Pause(toSuspend), this);
 	}
 }
