@@ -32,17 +32,17 @@ services.AddEventuateTramSqlProducer(dbSchemaName, (provider, o) =>
 ```
 
 ### Configuration Properties
-- Customize the maximum amount of time (ms) to poll for a new event:
+- Customize the maximum amount of time (ms) to poll for a new event (default 100):
 ```c#
-PollTimeout = 100;
+PollTimeout = 500; // default: 100
 ```
 - Customize the Backpressure behavior. Message consumption will be paused once the size of the unprocessed message
 - queue exceeds the PauseThreshold and resumed once it drops back below the ResumeThreshold.
 ```c#
 BackPressure = new BackPressureConfig
 {
-    PauseThreshold = 100,
-    ResumeThreshold = 10
+    PauseThreshold = 100, // default: int.MaxValue
+    ResumeThreshold = 10  // default: 0
 };
 ```
 
