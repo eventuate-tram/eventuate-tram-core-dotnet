@@ -46,7 +46,7 @@ public class BackPressureManagerTests
 		// Assert
 		Assert.Multiple(() =>
 		{
-			Assert.That(actions.PartitionsToPause, Contains.Item(partition1), "PartitionsToPause");
+			Assert.That(actions.PartitionsToPause, Is.EquivalentTo(new List<TopicPartition>{partition1}), "PartitionsToPause");
 			Assert.That(actions.PartitionsToResume, Is.Empty, "PartitionsToResume");
 		});
 	}
@@ -62,7 +62,7 @@ public class BackPressureManagerTests
 		
 		// Act
 		backlog = (int)(_config.ResumeThreshold + 1);
-		BackPressureActions actions = manager.Update(new HashSet<TopicPartition> {partition1}, backlog);
+		BackPressureActions actions = manager.Update(new HashSet<TopicPartition>(), backlog);
 
 		// Assert
 		Assert.Multiple(() =>
@@ -83,13 +83,13 @@ public class BackPressureManagerTests
 		
 		// Act
 		backlog = (int)(_config.ResumeThreshold - 1);
-		BackPressureActions actions = manager.Update(new HashSet<TopicPartition> {partition1}, backlog);
+		BackPressureActions actions = manager.Update(new HashSet<TopicPartition>(), backlog);
 
 		// Assert
 		Assert.Multiple(() =>
 		{
 			Assert.That(actions.PartitionsToPause, Is.Empty, "PartitionsToPause");
-			Assert.That(actions.PartitionsToResume, Contains.Item(partition1), "PartitionsToResume");
+			Assert.That(actions.PartitionsToResume, Is.EquivalentTo(new List<TopicPartition>{partition1}), "PartitionsToResume");
 		});
 	}
 	
@@ -109,8 +109,8 @@ public class BackPressureManagerTests
 		// Assert
 		Assert.Multiple(() =>
 		{
-			Assert.That(actions1.PartitionsToPause, Contains.Item(partition1), "PartitionsToPause 1");
-			Assert.That(actions2.PartitionsToPause, Contains.Item(partition2), "PartitionsToPause 2");
+			Assert.That(actions1.PartitionsToPause, Is.EquivalentTo(new List<TopicPartition>{partition1}), "PartitionsToPause 1");
+			Assert.That(actions2.PartitionsToPause, Is.EquivalentTo(new List<TopicPartition>{partition2}), "PartitionsToPause 2");
 		});
 	}
 	
@@ -127,13 +127,9 @@ public class BackPressureManagerTests
 		
 		// Act
 		backlog = (int)(_config.ResumeThreshold - 1);
-		BackPressureActions actions = manager.Update(new HashSet<TopicPartition> {partition1, partition2}, backlog);
+		BackPressureActions actions = manager.Update(new HashSet<TopicPartition>(), backlog);
 		
 		// Assert
-		Assert.Multiple(() =>
-		{
-			Assert.That(actions.PartitionsToResume, Contains.Item(partition1), "PartitionsToResume 1");
-			Assert.That(actions.PartitionsToResume, Contains.Item(partition2), "PartitionsToResume 2");
-		});
+		Assert.That(actions.PartitionsToResume, Is.EquivalentTo(new List<TopicPartition>{partition1, partition2}), "PartitionsToResume 1"); ;
 	}
 }
