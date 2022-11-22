@@ -46,7 +46,6 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 				
 				var queuedMessage = new QueuedMessage(message, messageConsumer);
 				_queue.Enqueue(queuedMessage);
-				_logger.LogDebug($"{logContext}: Queue size after enqueue: {_queue.Count}");
 				// Start a message processor if one is not running
 				if (!_running)
 				{
@@ -92,7 +91,6 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 						}
 					}
 				}
-				_logger.LogDebug($"{logContext}: Queue size after dequeue: {_queue.Count}");
 
 				cancellationToken.ThrowIfCancellationRequested();
 				

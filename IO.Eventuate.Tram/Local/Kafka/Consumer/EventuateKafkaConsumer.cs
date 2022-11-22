@@ -149,13 +149,6 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 								MaybeCommitOffsets(consumer, processor);
 
 								int backlog = processor.GetBacklog();
-								if (backlog > 0)
-								{
-									_logger.LogDebug($"{logContext}: Current backlog='{backlog}, " +
-									                 $"pause threshold='{_backPressureConfig.PauseThreshold}', " +
-									                 $"resume threshold='{_backPressureConfig.ResumeThreshold}'.");
-								}
-
 								var topicPartitions = new HashSet<TopicPartition>();
 								if (record != null)
 								{
