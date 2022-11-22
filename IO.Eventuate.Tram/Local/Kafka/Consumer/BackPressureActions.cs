@@ -6,13 +6,13 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer;
 
 public class BackPressureActions
 {
-	public ISet<TopicPartition> PartitionsToPause { get; }
-	public ISet<TopicPartition> PartitionsToResume { get; }
+	public IImmutableSet<TopicPartition> PartitionsToPause { get; }
+	public IImmutableSet<TopicPartition> PartitionsToResume { get; }
 
-	public BackPressureActions(ISet<TopicPartition> partitionsToPause, ISet<TopicPartition> partitionsToResume)
+	private BackPressureActions(ISet<TopicPartition> partitionsToPause, ISet<TopicPartition> partitionsToResume)
 	{
-		PartitionsToPause = partitionsToPause;
-		PartitionsToResume = partitionsToResume;
+		PartitionsToPause = partitionsToPause.ToImmutableHashSet();
+		PartitionsToResume = partitionsToResume.ToImmutableHashSet();
 	}
 
 	public static readonly BackPressureActions None =
