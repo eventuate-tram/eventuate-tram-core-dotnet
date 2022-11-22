@@ -5,13 +5,13 @@ namespace IO.Eventuate.Tram.Consumer.Kafka;
 
 internal class QueuedMessage
 {
-	internal QueuedMessage(IMessage message, Action<IMessage> messageConsumer)
+	public QueuedMessage(IMessage message, Action<IMessage> messageConsumer)
 	{
 		Message = message;
 		MessageConsumer = messageConsumer;
 	}
 			
-	internal IMessage Message { get; }
+	public IMessage Message { get; }
 
-	internal Action<IMessage> MessageConsumer { get; }
+	public Action<IMessage> MessageConsumer { get; }
 }
