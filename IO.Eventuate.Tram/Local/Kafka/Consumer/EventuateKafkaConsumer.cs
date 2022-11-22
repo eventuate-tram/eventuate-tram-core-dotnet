@@ -137,9 +137,8 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 
 								if (record != null)
 								{
-									_logger.LogDebug(
-										$"{logContext}: process record at offset='{record.Offset}', key='{record.Message.Key}', value='{record.Message.Value}'");
-
+									_logger.LogDebug($"{logContext}: process record at offset='{record.Offset}', " +
+									                 $"key='{record.Message.Key}', value='{record.Message.Value}'");
 									processor.Process(record);
 								}
 								else
@@ -150,6 +149,12 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 								MaybeCommitOffsets(consumer, processor);
 
 								int backlog = processor.GetBacklog();
+								if (backlog > 0)
+								{
+									_logger.LogDebug($"{logContext}: Current backlog='{backlog}, " +
+									                 $"pause threshold='{_backPressureConfig.PauseThreshold}', " +
+									                 $"resume threshold='{_backPressureConfig.ResumeThreshold}'.");
+								}
 								BackPressureActions actions = backPressureManager.Update(record, backlog);
 
 								if (actions.PartitionsToPause.Any())
