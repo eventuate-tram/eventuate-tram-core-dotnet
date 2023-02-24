@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using IO.Eventuate.Tram.Messaging.Common;
 using NUnit.Framework;
 
@@ -43,24 +44,28 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers
             PostSendCount++;
         }
 
-        public void PreReceive(IMessage message)
+        public Task PreReceiveAsync(IMessage message)
         {
             PreReceiveCount++;
+            return Task.CompletedTask;
         }
 
-        public void PreHandle(string subscriberId, IMessage message)
+        public Task PreHandleAsync(string subscriberId, IMessage message)
         {
             PreHandleCount++;
+            return Task.CompletedTask;
         }
 
-        public void PostHandle(string subscriberId, IMessage message, Exception e)
+        public Task PostHandleAsync(string subscriberId, IMessage message, Exception e)
         {
             PostHandleCount++;
+            return Task.CompletedTask;
         }
 
-        public void PostReceive(IMessage message)
+        public Task PostReceiveAsync(IMessage message)
         {
             PostReceiveCount++;
+            return Task.CompletedTask;
         }
     }
 }

@@ -25,7 +25,7 @@ namespace IO.Eventuate.Tram.Messaging.Producer
 			MessageInterceptors = messageInterceptors.ToArray();
 			Logger = logger;
 		}
-		
+
 		protected void PreSend(IMessage message)
 		{
 			var logContext = $"{nameof(PreSend)} message.Id={message.Id}";
@@ -36,7 +36,7 @@ namespace IO.Eventuate.Tram.Messaging.Producer
 			}
 			Logger.LogDebug($"-{logContext}: sent to {MessageInterceptors.Length} message interceptors");
 		}
-
+		
 		protected void PostSend(IMessage message, Exception e)
 		{
 			var logContext = $"{nameof(PostSend)} message.Id={message.Id}";
@@ -83,6 +83,28 @@ namespace IO.Eventuate.Tram.Messaging.Producer
 			}
 		}
 		
+		protected async Task PreSendAsync(IMessage message)
+		{
+			var logContext = $"{nameof(PreSendAsync)} message.Id={message.Id}";
+			Logger.LogDebug($"+{logContext}");
+			foreach (IMessageInterceptor messageInterceptor in MessageInterceptors)
+			{
+				await messageInterceptor.PreSendAsync(message);
+			}
+			Logger.LogDebug($"-{logContext}: sent to {MessageInterceptors.Length} message interceptors");
+		}
+
+		protected async Task PostSendAsync(IMessage message, Exception e)
+		{
+			var logContext = $"{nameof(PostSendAsync)} message.Id={message.Id}";
+			Logger.LogDebug($"+{logContext}");
+			foreach (IMessageInterceptor messageInterceptor in MessageInterceptors)
+			{
+				await messageInterceptor.PostSendAsync(message, e);
+			}
+			Logger.LogDebug($"-{logContext}: sent to {MessageInterceptors.Length} message interceptors");
+		}
+		
 		protected async Task SendMessageAsync(string id, string destination, IMessage message, IMessageSender messageSender)
 		{
 			var logContext = $"{nameof(SendMessageAsync)} id='{id}', destination='{destination}'";
@@ -104,16 +126,16 @@ namespace IO.Eventuate.Tram.Messaging.Producer
 
 			message.SetHeader(MessageHeaders.Date, HttpDateHeaderFormatUtil.NowAsHttpDateString());
 
-			PreSend(message);
+			await PreSendAsync(message);
 			try
 			{
 				await messageSender.SendAsync(message);
-				PostSend(message, null);
+				await PostSendAsync(message, null);
 			}
 			catch (Exception e)
 			{
 				Logger.LogError(e, $"{logContext}: Exception sending message");
-				PostSend(message, e);
+				await PostSendAsync(message, e);
 				throw;
 			}
 		}

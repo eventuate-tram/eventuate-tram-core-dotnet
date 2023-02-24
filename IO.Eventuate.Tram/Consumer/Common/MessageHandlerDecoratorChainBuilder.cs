@@ -7,6 +7,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace IO.Eventuate.Tram.Consumer.Common
 {
@@ -32,13 +33,13 @@ namespace IO.Eventuate.Tram.Consumer.Common
 			return this;
 		}
 
-		public IMessageHandlerDecoratorChain AndFinally(Action<SubscriberIdAndMessage, IServiceProvider> consumer)
+		public IMessageHandlerDecoratorChain AndFinally(Func<SubscriberIdAndMessage, IServiceProvider, Task> consumer)
 		{
 			return BuildChain(_handlers.First, consumer);
 		}
 
 		private static IMessageHandlerDecoratorChain BuildChain(LinkedListNode<IMessageHandlerDecorator> handlersHead,
-			Action<SubscriberIdAndMessage, IServiceProvider> consumer)
+			Func<SubscriberIdAndMessage, IServiceProvider, Task> consumer)
 		{
 			if (handlersHead == null)
 			{
@@ -54,16 +55,16 @@ namespace IO.Eventuate.Tram.Consumer.Common
 
 		private class MessageHandlerDecoratorChain : IMessageHandlerDecoratorChain
 		{
-			private readonly Action<SubscriberIdAndMessage, IServiceProvider> _action;
+			private readonly Func<SubscriberIdAndMessage, IServiceProvider, Task> _action;
 
-			public MessageHandlerDecoratorChain(Action<SubscriberIdAndMessage, IServiceProvider> action)
+			public MessageHandlerDecoratorChain(Func<SubscriberIdAndMessage, IServiceProvider, Task> action)
 			{
 				_action = action;
 			}
 			
-			public void InvokeNext(SubscriberIdAndMessage subscriberIdAndMessage, IServiceProvider serviceProvider)
+			public async Task InvokeNextAsync(SubscriberIdAndMessage subscriberIdAndMessage, IServiceProvider serviceProvider)
 			{
-				_action(subscriberIdAndMessage, serviceProvider);
+				await _action(subscriberIdAndMessage, serviceProvider);
 			}
 		}
 	}

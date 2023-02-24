@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using IO.Eventuate.Tram.Events.Common;
 using IO.Eventuate.Tram.Events.Publisher;
 using IO.Eventuate.Tram.Events.Subscriber;
@@ -28,13 +29,14 @@ namespace IO.Eventuate.Tram.UnitTests.Events.Subscriber
             {
                 return DomainEventHandlersBuilder
                     .ForAggregateType(AggregateType)
-                    .OnEvent<MyDomainEvent>(HandleAccountDebited)
+                    .OnEvent<MyDomainEvent>(HandleAccountDebitedAsync)
                     .Build();
             }
 
-            private void HandleAccountDebited(IDomainEventEnvelope<MyDomainEvent> message)
+            private Task HandleAccountDebitedAsync(IDomainEventEnvelope<MyDomainEvent> message)
             {
                 Queue.Enqueue(message);
+                return Task.CompletedTask;
             }
 
         }
@@ -44,7 +46,7 @@ namespace IO.Eventuate.Tram.UnitTests.Events.Subscriber
         }
 
         [Test]
-        public void MessageHandler_ValidMessage_RegisteredHandlerCalled()
+        public async Task MessageHandler_ValidMessage_RegisteredHandlerCalled()
         {
 			// Arrange
             MyTarget target = new MyTarget();
@@ -61,7 +63,7 @@ namespace IO.Eventuate.Tram.UnitTests.Events.Subscriber
             dispatcher.Initialize();
 
 			// Act
-            dispatcher.MessageHandler(DomainEventPublisher.MakeMessageForDomainEvent(AggregateType,
+            await dispatcher.MessageHandlerAsync(DomainEventPublisher.MakeMessageForDomainEvent(AggregateType,
                 AggregateId, new Dictionary<string, string> {{ MessageHeaders.Id, _messageId } },
                 new MyDomainEvent(), eventTypeNamingStrategy), serviceProvider);
 

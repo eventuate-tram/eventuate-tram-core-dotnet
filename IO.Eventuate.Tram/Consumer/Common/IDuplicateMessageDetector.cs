@@ -6,13 +6,14 @@
  */
 
 using System;
+using System.Threading.Tasks;
 
 namespace IO.Eventuate.Tram.Consumer.Common
 {
 	public interface IDuplicateMessageDetector
 	{
-		bool IsDuplicate(string consumerId, string messageId);
+		Task<bool> IsDuplicateAsync(string consumerId, string messageId);
 		
-		void DoWithMessage(SubscriberIdAndMessage subscriberIdAndMessage, Action callback);
+		Task DoWithMessageAsync(SubscriberIdAndMessage subscriberIdAndMessage, Func<Task> callback);
 	}
 }

@@ -32,7 +32,7 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 			_consumerStatus = new SwimlaneDispatcherBacklog(_queue);
 		}
 
-		public SwimlaneDispatcherBacklog Dispatch(IMessage message, Action<IMessage> messageConsumer)
+		public SwimlaneDispatcherBacklog Dispatch(IMessage message, Func<IMessage, Task> messageConsumer)
 		{
 			var logContext = $"{nameof(Dispatch)} for {_dispatcherContext}, MessageId={message.Id}";
 			_logger.LogDebug($"+{logContext}");
@@ -68,12 +68,12 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 
 			// Java implementation uses a ThreadPoolExecutor as executor.
 			// DOTNET Task.Run queues the work to run on the ThreadPool.
-			_processQueuedMessagesTask = Task.Run(() => ProcessQueuedMessage(_cancellationTokenSource.Token));
+			_processQueuedMessagesTask = Task.Run(() => ProcessQueuedMessageAsync(_cancellationTokenSource.Token));
 		}
 
-		private void ProcessQueuedMessage(CancellationToken cancellationToken)
+		private async Task ProcessQueuedMessageAsync(CancellationToken cancellationToken)
 		{
-			var logContext = $"{nameof(ProcessQueuedMessage)} for {_dispatcherContext}";
+			var logContext = $"{nameof(ProcessQueuedMessageAsync)} for {_dispatcherContext}";
 			_logger.LogDebug($"+{logContext}");
 			while (true)
 			{
@@ -97,7 +97,7 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 				_logger.LogDebug($"{logContext}: Invoking handler for MessageId='{queuedMessage.Message.Id}'");
 				try
 				{
-					queuedMessage.MessageConsumer(queuedMessage.Message);
+					await queuedMessage.MessageConsumerAsync(queuedMessage.Message);
 				}
 				catch (Exception e)
 				{

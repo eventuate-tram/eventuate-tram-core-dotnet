@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace IO.Eventuate.Tram.Consumer.Common
@@ -9,13 +10,13 @@ namespace IO.Eventuate.Tram.Consumer.Common
 		{
 		}
 
-		public Action<SubscriberIdAndMessage, IServiceProvider, IMessageHandlerDecoratorChain> Accept =>
-			(subscriberIdAndMessage, serviceProvider, messageHandlerDecoratorChain) =>
+		public Func<SubscriberIdAndMessage, IServiceProvider, IMessageHandlerDecoratorChain, Task> Accept =>
+			async (subscriberIdAndMessage, serviceProvider, messageHandlerDecoratorChain) =>
 			{
 				var duplicateMessageDetector =
 					serviceProvider.GetRequiredService<IDuplicateMessageDetector>();
-				duplicateMessageDetector.DoWithMessage(subscriberIdAndMessage,
-					() => messageHandlerDecoratorChain.InvokeNext(subscriberIdAndMessage, serviceProvider));
+				await duplicateMessageDetector.DoWithMessageAsync(subscriberIdAndMessage,
+					async () => await messageHandlerDecoratorChain.InvokeNextAsync(subscriberIdAndMessage, serviceProvider));
 			};
 		
 		public int Order => BuiltInMessageHandlerDecoratorOrder.DuplicateDetectingMessageHandlerDecorator;

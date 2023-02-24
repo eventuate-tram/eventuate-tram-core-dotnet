@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using IO.Eventuate.Tram.Events.Common;
 using IO.Eventuate.Tram.Events.Subscriber;
 using IO.Eventuate.Tram.IntegrationTests.TestFixtures;
@@ -82,17 +83,17 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers
             String aggregateType34, String aggregateTypeDelay)
         {
             return DomainEventHandlersBuilder.ForAggregateType(aggregateType12)
-                .OnEvent<TestMessageType1>(HandleMessageType1Event)
-                .OnEvent<TestMessageType2>(HandleMessageType2Event)
+                .OnEvent<TestMessageType1>(HandleMessageType1EventAsync)
+                .OnEvent<TestMessageType2>(HandleMessageType2EventAsync)
                 .AndForAggregateType(aggregateType34)
-                .OnEvent<TestMessageType3>(HandleMessageType3Event)
+                .OnEvent<TestMessageType3>(HandleMessageType3EventAsync)
                 .OnEvent<TestMessageType4,TestMessage4Handler>()
                 .AndForAggregateType(aggregateTypeDelay)
-                .OnEvent<TestMessageTypeDelay>(HandleMessageTypeDelayEvent)
+                .OnEvent<TestMessageTypeDelay>(HandleMessageTypeDelayEventAsync)
                 .Build();
         }
 
-        private void HandleMessageType1Event(IDomainEventEnvelope<TestMessageType1> @event)
+        private Task HandleMessageType1EventAsync(IDomainEventEnvelope<TestMessageType1> @event)
         {
             _logger.LogDebug("Got MessageType1Event with id={} and value={}", @event.EventId,
                 @event.Event.ToString());
@@ -103,26 +104,30 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers
                 ExceptionCount++;
                 throw (new Exception());
             }
+
+            return Task.CompletedTask;
         }
 
-        private void HandleMessageType2Event(IDomainEventEnvelope<TestMessageType2> @event)
+        private Task HandleMessageType2EventAsync(IDomainEventEnvelope<TestMessageType2> @event)
         {
             _logger.LogDebug("Got message MessageType2Event with id={} and value={}", @event.EventId,
                 @event.Event.ToString());
             EventStatistics eventStatistics = GetEventStatistics(typeof(TestMessageType2));
             HandleTestMessageEvent(@event, eventStatistics);
+            return Task.CompletedTask;
         }
 
-        private void HandleMessageType3Event(IDomainEventEnvelope<TestMessageType3> @event,
+        private Task HandleMessageType3EventAsync(IDomainEventEnvelope<TestMessageType3> @event,
             IServiceProvider serviceProvider)
         {
             _logger.LogDebug("Got message MessageType3Event with id={} and value={}", @event.EventId,
                 @event.Event.ToString());
             EventStatistics eventStatistics = GetEventStatistics(typeof(TestMessageType3));
             HandleTestMessageEvent(@event, eventStatistics);
+            return Task.CompletedTask;
         }
         
-        private void HandleMessageTypeDelayEvent(IDomainEventEnvelope<TestMessageTypeDelay> @event,
+        private Task HandleMessageTypeDelayEventAsync(IDomainEventEnvelope<TestMessageTypeDelay> @event,
             IServiceProvider serviceProvider)
         {
             _logger.LogDebug("Got message TestMessageTypeDelay with id={} and value={}", @event.EventId,
@@ -132,6 +137,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers
             HandleTestMessageEvent(@event, eventStatistics);
             Thread.Sleep(MessageType3ProcessingDelay);
             File.AppendAllText(IntegrationTestsBase.PingFileName, $"Processed event '{@event.Message.Payload}' with value '{@event.Event.Value}'\n");
+            return Task.CompletedTask;
         }
 
         public void HandleTestMessageEvent(IDomainEventEnvelope<IDomainEvent> @event, EventStatistics eventStatistics)

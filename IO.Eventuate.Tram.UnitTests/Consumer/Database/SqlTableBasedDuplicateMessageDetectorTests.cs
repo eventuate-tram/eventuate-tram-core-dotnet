@@ -2,6 +2,7 @@
 using System.Data;
 using Microsoft.Data.SqlClient;
 using System.Reflection;
+using System.Threading.Tasks;
 using IO.Eventuate.Tram.Consumer.Database;
 using IO.Eventuate.Tram.Database;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +16,7 @@ namespace IO.Eventuate.Tram.UnitTests.Consumer.Database
 	public class SqlTableBasedDuplicateMessageDetectorTests
 	{
 		[Test]
-		public void IsDuplicate_ReceiveMessageCollision_ReturnsTrue()
+		public async Task IsDuplicate_ReceiveMessageCollision_ReturnsTrue()
 		{
 			// Arrange
 			var context = Substitute.For<EventuateTramDbContext>();
@@ -27,11 +28,11 @@ namespace IO.Eventuate.Tram.UnitTests.Consumer.Database
 
 			const int duplicateKeyError = 2627;
 			var sqlException = CreateSqlException(duplicateKeyError, "Already there");
-			context.SaveChanges().Throws(new DbUpdateException("Duplicate",
+			context.SaveChangesAsync().Throws(new DbUpdateException("Duplicate",
 				sqlException));
 
 			// Act
-			bool isDuplicate = detector.IsDuplicate("consumer", "message");
+			bool isDuplicate = await detector.IsDuplicateAsync("consumer", "message");
 
 			// Assert
 			Assert.That(isDuplicate, Is.True, "IsDuplicate response");

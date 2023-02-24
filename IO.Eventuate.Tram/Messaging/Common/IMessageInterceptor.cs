@@ -6,21 +6,36 @@
  */
 
 using System;
+using System.Threading.Tasks;
 
 namespace IO.Eventuate.Tram.Messaging.Common
 {
 	public interface IMessageInterceptor
 	{
+		// TODO: Do we want to spit out the sync methods to a different interface?
 		void PreSend(IMessage message);
-
+		
+		Task PreSendAsync(IMessage message)
+		{
+			// TODO: do we want to have this default implementation
+			PreSend(message);
+			return Task.CompletedTask;
+		}
+		
 		void PostSend(IMessage message, Exception e);
 
-		void PreReceive(IMessage message);
+		Task PostSendAsync(IMessage message, Exception e)
+		{
+			PostSend(message, e);
+			return Task.CompletedTask;
+		}
 
-		void PreHandle(string subscriberId, IMessage message);
+		Task PreReceiveAsync(IMessage message);
 
-		void PostHandle(string subscriberId, IMessage message, Exception e);
+		Task PreHandleAsync(string subscriberId, IMessage message);
 
-		void PostReceive(IMessage message);
+		Task PostHandleAsync(string subscriberId, IMessage message, Exception e);
+
+		Task PostReceiveAsync(IMessage message);
 	}
 }

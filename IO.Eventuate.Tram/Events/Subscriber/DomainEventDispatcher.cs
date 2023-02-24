@@ -6,6 +6,7 @@
  */
 
 using System;
+using System.Threading.Tasks;
 using IO.Eventuate.Tram.Events.Common;
 using IO.Eventuate.Tram.Messaging.Common;
 using IO.Eventuate.Tram.Messaging.Consumer;
@@ -40,7 +41,7 @@ namespace IO.Eventuate.Tram.Events.Subscriber
 		public void Initialize()
 		{
 			_subscription = _messageConsumer.Subscribe(_subscriberId, _domainEventHandlers.GetAggregateTypes(),
-				MessageHandler);
+				MessageHandlerAsync);
 		}
 
 		public void Stop()
@@ -48,9 +49,9 @@ namespace IO.Eventuate.Tram.Events.Subscriber
 			_subscription?.Unsubscribe();
 		}
 
-		public void MessageHandler(IMessage message, IServiceProvider serviceProvider)
+		public async Task MessageHandlerAsync(IMessage message, IServiceProvider serviceProvider)
 		{
-			var logContext = $"{nameof(MessageHandler)} on {_dispatcherContext}, MessageId={message.Id}";
+			var logContext = $"{nameof(MessageHandlerAsync)} on {_dispatcherContext}, MessageId={message.Id}";
 			_logger.LogDebug($"+{logContext}");
 			string aggregateType = message.GetRequiredHeader(EventMessageHeaders.AggregateType);
 
@@ -72,7 +73,7 @@ namespace IO.Eventuate.Tram.Events.Subscriber
 				message.GetRequiredHeader(MessageHeaders.Id),
 				param);
 
-			handler.Invoke(envelope, serviceProvider);
+			await handler.InvokeAsync(envelope, serviceProvider);
 			_logger.LogDebug($"-{logContext}: Processed message of type='{aggregateType}'");
 		}
 	}

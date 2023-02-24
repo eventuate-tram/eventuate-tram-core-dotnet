@@ -1,17 +1,18 @@
 ﻿using System;
+using System.Threading.Tasks;
 using IO.Eventuate.Tram.Messaging.Common;
 
 namespace IO.Eventuate.Tram.Consumer.Kafka;
 
 internal class QueuedMessage
 {
-	public QueuedMessage(IMessage message, Action<IMessage> messageConsumer)
+	public QueuedMessage(IMessage message, Func<IMessage, Task> messageConsumerAsync)
 	{
 		Message = message;
-		MessageConsumer = messageConsumer;
+		MessageConsumerAsync = messageConsumerAsync;
 	}
 			
 	public IMessage Message { get; }
 
-	public Action<IMessage> MessageConsumer { get; }
+	public Func<IMessage, Task> MessageConsumerAsync { get; }
 }
