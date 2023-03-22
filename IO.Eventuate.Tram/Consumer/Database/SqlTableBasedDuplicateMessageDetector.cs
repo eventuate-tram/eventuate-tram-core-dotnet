@@ -62,7 +62,7 @@ namespace IO.Eventuate.Tram.Consumer.Database
 			                    $"MessageId='{subscriberIdAndMessage.Message.Id}'";
 
 			using (var transactionScope = new TransactionScope(TransactionScopeOption.Required,
-				new TransactionOptions {IsolationLevel = IsolationLevel.ReadCommitted}))
+				new TransactionOptions {IsolationLevel = IsolationLevel.ReadCommitted}, TransactionScopeAsyncFlowOption.Enabled))
 			{
 				try
 				{
