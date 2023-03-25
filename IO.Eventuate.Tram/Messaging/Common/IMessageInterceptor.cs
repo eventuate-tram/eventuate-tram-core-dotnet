@@ -12,23 +12,13 @@ namespace IO.Eventuate.Tram.Messaging.Common
 {
 	public interface IMessageInterceptor
 	{
-		// TODO: Do we want to spit out the sync methods to a different interface?
 		void PreSend(IMessage message);
-		
-		Task PreSendAsync(IMessage message)
-		{
-			// TODO: do we want to have this default implementation
-			PreSend(message);
-			return Task.CompletedTask;
-		}
+
+		Task PreSendAsync(IMessage message);
 		
 		void PostSend(IMessage message, Exception e);
 
-		Task PostSendAsync(IMessage message, Exception e)
-		{
-			PostSend(message, e);
-			return Task.CompletedTask;
-		}
+		Task PostSendAsync(IMessage message, Exception e);
 
 		Task PreReceiveAsync(IMessage message);
 

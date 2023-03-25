@@ -39,9 +39,21 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers
             PreSendCount++;
         }
 
+        public Task PreSendAsync(IMessage message)
+        {
+            PreSend(message);
+            return Task.CompletedTask;
+        }
+
         public void PostSend(IMessage message, Exception e)
         {
             PostSendCount++;
+        }
+
+        public Task PostSendAsync(IMessage message, Exception e)
+        {
+            PostSend(message, e);
+            return Task.CompletedTask;
         }
 
         public Task PreReceiveAsync(IMessage message)
