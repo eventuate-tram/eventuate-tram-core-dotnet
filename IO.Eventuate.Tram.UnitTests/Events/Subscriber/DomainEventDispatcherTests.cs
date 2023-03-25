@@ -60,7 +60,7 @@ namespace IO.Eventuate.Tram.UnitTests.Events.Subscriber
             DomainEventDispatcher dispatcher = new DomainEventDispatcher(
 	            SubscriberId, target.DomainEventHandlers(), messageConsumer, eventTypeNamingStrategy, logger);
 
-            dispatcher.Initialize();
+            await dispatcher.InitializeAsync();
 
 			// Act
             await dispatcher.MessageHandlerAsync(DomainEventPublisher.MakeMessageForDomainEvent(AggregateType,

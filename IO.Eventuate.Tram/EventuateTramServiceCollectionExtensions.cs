@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using IO.Eventuate.Tram.Consumer.Common;
 using IO.Eventuate.Tram.Consumer.Database;
 using IO.Eventuate.Tram.Consumer.Kafka;
@@ -38,6 +39,14 @@ namespace IO.Eventuate.Tram
 			this IServiceCollection serviceCollection, string subscriberId,
 			Func<IServiceProvider, DomainEventHandlers> domainEventHandlersFactory)
 		{
+			AddEventuateTramDomainEventDispatcher(serviceCollection, subscriberId,
+				provider => Task.FromResult(domainEventHandlersFactory(provider)));
+		}
+		
+		public static void AddEventuateTramDomainEventDispatcher(
+			this IServiceCollection serviceCollection, string subscriberId,
+			Func<IServiceProvider, Task<DomainEventHandlers>> domainEventHandlersFactory)
+		{
 			serviceCollection.TryAddSingleton<IEventTypeNamingStrategy, AttributeEventTypeNamingStrategy>();
 			serviceCollection.AddSingleton(provider =>
 			{
@@ -45,7 +54,8 @@ namespace IO.Eventuate.Tram
 				var logger = provider.GetRequiredService<ILogger<DomainEventDispatcher>>();
 				var eventTypeNamingStrategy = provider.GetRequiredService<IEventTypeNamingStrategy>();
 
-				var dispatcher = new DomainEventDispatcher(subscriberId, domainEventHandlersFactory(provider),
+				var dispatcher = new DomainEventDispatcher(subscriberId,
+					async () => await domainEventHandlersFactory(provider),
 					messageConsumer, eventTypeNamingStrategy, logger);
 
 				return dispatcher;

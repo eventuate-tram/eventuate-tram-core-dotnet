@@ -18,14 +18,12 @@ namespace IO.Eventuate.Tram.Events.Subscriber
 			_domainEventDispatchers = domainEventDispatchers;
 		}
 		
-		public Task StartAsync(CancellationToken cancellationToken)
+		public async Task StartAsync(CancellationToken cancellationToken)
 		{
 			foreach (DomainEventDispatcher domainEventDispatcher in _domainEventDispatchers)
 			{
-				domainEventDispatcher.Initialize();
+				await domainEventDispatcher.InitializeAsync();
 			}
-
-			return Task.CompletedTask;
 		}
 
 		public Task StopAsync(CancellationToken cancellationToken)
