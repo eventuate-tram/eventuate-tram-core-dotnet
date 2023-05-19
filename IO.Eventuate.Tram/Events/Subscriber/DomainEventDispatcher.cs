@@ -6,6 +6,7 @@
  */
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using IO.Eventuate.Tram.Events.Common;
 using IO.Eventuate.Tram.Messaging.Common;
@@ -63,7 +64,7 @@ namespace IO.Eventuate.Tram.Events.Subscriber
 			await _subscription.UnsubscribeAsync();
 		}
 
-		public async Task MessageHandlerAsync(IMessage message, IServiceProvider serviceProvider)
+		public async Task MessageHandlerAsync(IMessage message, IServiceProvider serviceProvider, CancellationToken cancellationToken)
 		{
 			var logContext = $"{nameof(MessageHandlerAsync)} on {_dispatcherContext}, MessageId={message.Id}";
 			_logger.LogDebug($"+{logContext}");
@@ -87,7 +88,7 @@ namespace IO.Eventuate.Tram.Events.Subscriber
 				message.GetRequiredHeader(MessageHeaders.Id),
 				param);
 
-			await handler.InvokeAsync(envelope, serviceProvider);
+			await handler.InvokeAsync(envelope, serviceProvider, cancellationToken);
 			_logger.LogDebug($"-{logContext}: Processed message of type='{aggregateType}'");
 		}
 	}

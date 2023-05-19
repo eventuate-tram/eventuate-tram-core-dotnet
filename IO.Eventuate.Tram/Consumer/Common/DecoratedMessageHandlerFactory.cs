@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using IO.Eventuate.Tram.Messaging.Common;
 using IO.Eventuate.Tram.Messaging.Consumer;
@@ -20,7 +21,7 @@ namespace IO.Eventuate.Tram.Consumer.Common
 			_logger = logger;
 		}
 
-		public Func<SubscriberIdAndMessage, IServiceProvider, Task> Decorate(MessageHandlerAsync messageHandler) {
+		public Func<SubscriberIdAndMessage, IServiceProvider, CancellationToken, Task> Decorate(MessageHandlerAsync messageHandler) {
 			MessageHandlerDecoratorChainBuilder builder = MessageHandlerDecoratorChainBuilder.StartingWith(_decorators[0]);
 
 			foreach (IMessageHandlerDecorator mhd in _decorators.Skip(1))
@@ -28,19 +29,19 @@ namespace IO.Eventuate.Tram.Consumer.Common
 				builder = builder.AndThen(mhd);
 			}
 
-			IMessageHandlerDecoratorChain chain = builder.AndFinally(async (smh, serviceProvider) => {
+			IMessageHandlerDecoratorChain chain = builder.AndFinally(async (smh, serviceProvider, cancellationToken) => {
 				String subscriberId = smh.SubscriberId;
 				IMessage message = smh.Message;
 				try {
 					_logger.LogTrace($"Invoking handler {subscriberId} {message.Id}");
-					await messageHandler(smh.Message, serviceProvider);
+					await messageHandler(smh.Message, serviceProvider, cancellationToken);
 					_logger.LogTrace($"handled message {subscriberId} {message.Id}");
 				} catch (Exception e) {
 					_logger.LogTrace($"Got exception {subscriberId} {message.Id}: {e}");
 					throw;
 				}
 			});
-			return (subscriberIdAndMessage, serviceProvider) => chain.InvokeNextAsync(subscriberIdAndMessage, serviceProvider);
+			return (subscriberIdAndMessage, serviceProvider, cancellationToken) => chain.InvokeNextAsync(subscriberIdAndMessage, serviceProvider, cancellationToken);
 		}
 	}
 }

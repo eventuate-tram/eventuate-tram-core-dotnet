@@ -6,6 +6,7 @@
  */
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using IO.Eventuate.Tram.Events.Common;
 using IO.Eventuate.Tram.Messaging.Common;
@@ -14,10 +15,10 @@ namespace IO.Eventuate.Tram.Events.Subscriber
 {
 	public class DomainEventHandler
 	{
-		private readonly Func<IDomainEventEnvelope<IDomainEvent>, IServiceProvider, Task> _handler;
+		private readonly Func<IDomainEventEnvelope<IDomainEvent>, IServiceProvider, CancellationToken, Task> _handler;
 
 		public DomainEventHandler(string aggregateType, Type eventType,
-			Func<IDomainEventEnvelope<IDomainEvent>, IServiceProvider, Task> handler)
+			Func<IDomainEventEnvelope<IDomainEvent>, IServiceProvider, CancellationToken, Task> handler)
 		{
 			AggregateType = aggregateType;
 			EventType = eventType;
@@ -31,9 +32,9 @@ namespace IO.Eventuate.Tram.Events.Subscriber
 			       && String.Equals(eventTypeName, message.GetRequiredHeader(EventMessageHeaders.EventType));
 		}
 
-		public async Task InvokeAsync(IDomainEventEnvelope<IDomainEvent> domainEventEnvelope, IServiceProvider serviceProvider)
+		public async Task InvokeAsync(IDomainEventEnvelope<IDomainEvent> domainEventEnvelope, IServiceProvider serviceProvider, CancellationToken cancellationToken)
 		{
-			await _handler(domainEventEnvelope, serviceProvider);
+			await _handler(domainEventEnvelope, serviceProvider, cancellationToken);
 		}
 
 		public Type EventType { get; }

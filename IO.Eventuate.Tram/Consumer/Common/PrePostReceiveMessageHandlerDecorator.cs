@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using IO.Eventuate.Tram.Messaging.Common;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,8 +10,8 @@ namespace IO.Eventuate.Tram.Consumer.Common
 {
 	public class PrePostReceiveMessageHandlerDecorator : IMessageHandlerDecorator, IOrdered
 	{
-		public Func<SubscriberIdAndMessage, IServiceProvider, IMessageHandlerDecoratorChain, Task> Accept =>
-			async (subscriberIdAndMessage, serviceProvider, messageHandlerDecoratorChain) =>
+		public Func<SubscriberIdAndMessage, IServiceProvider, IMessageHandlerDecoratorChain, CancellationToken, Task> Accept =>
+			async (subscriberIdAndMessage, serviceProvider, messageHandlerDecoratorChain, cancellationToken) =>
 			{
 				IMessage message = subscriberIdAndMessage.Message;
 				IMessageInterceptor[] messageInterceptors =
@@ -18,7 +19,7 @@ namespace IO.Eventuate.Tram.Consumer.Common
 				await PreReceiveAsync(message, messageInterceptors);
 				try
 				{
-					await messageHandlerDecoratorChain.InvokeNextAsync(subscriberIdAndMessage, serviceProvider);
+					await messageHandlerDecoratorChain.InvokeNextAsync(subscriberIdAndMessage, serviceProvider, cancellationToken);
 				}
 				finally
 				{

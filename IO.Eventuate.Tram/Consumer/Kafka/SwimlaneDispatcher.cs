@@ -32,7 +32,7 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 			_consumerStatus = new SwimlaneDispatcherBacklog(_queue);
 		}
 
-		public SwimlaneDispatcherBacklog Dispatch(IMessage message, Func<IMessage, Task> messageConsumer)
+		public SwimlaneDispatcherBacklog Dispatch(IMessage message, Func<IMessage, CancellationToken, Task> messageConsumer)
 		{
 			var logContext = $"{nameof(Dispatch)} for {_dispatcherContext}, MessageId={message.Id}";
 			_logger.LogDebug($"+{logContext}");
@@ -97,7 +97,7 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 				_logger.LogDebug($"{logContext}: Invoking handler for MessageId='{queuedMessage.Message.Id}'");
 				try
 				{
-					await queuedMessage.MessageConsumerAsync(queuedMessage.Message);
+					await queuedMessage.MessageConsumerAsync(queuedMessage.Message, cancellationToken);
 				}
 				catch (Exception e)
 				{

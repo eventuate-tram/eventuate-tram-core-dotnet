@@ -7,6 +7,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using IO.Eventuate.Tram.Events.Common;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,7 +33,7 @@ namespace IO.Eventuate.Tram.Events.Subscriber
 			where TEvent : IDomainEvent
 		{
 			_handlers.Add(new DomainEventHandler(_aggregateType, typeof(TEvent),
-				(e, p) => handler((IDomainEventEnvelope<TEvent>) e)));
+				(e, p, _) => handler((IDomainEventEnvelope<TEvent>) e)));
 			return this;
 		}
 
@@ -40,7 +41,23 @@ namespace IO.Eventuate.Tram.Events.Subscriber
 			Func<IDomainEventEnvelope<TEvent>, IServiceProvider, Task> handler) where TEvent : IDomainEvent
 		{
 			_handlers.Add(new DomainEventHandler(_aggregateType, typeof(TEvent),
-				(e, p) => handler((IDomainEventEnvelope<TEvent>) e, p)));
+				(e, p, _) => handler((IDomainEventEnvelope<TEvent>) e, p)));
+			return this;
+		}
+		
+		public DomainEventHandlersBuilder OnEvent<TEvent>(Func<IDomainEventEnvelope<TEvent>, CancellationToken, Task> handler)
+			where TEvent : IDomainEvent
+		{
+			_handlers.Add(new DomainEventHandler(_aggregateType, typeof(TEvent),
+				(e, p, cancellationToken) => handler((IDomainEventEnvelope<TEvent>) e, cancellationToken)));
+			return this;
+		}
+
+		public DomainEventHandlersBuilder OnEvent<TEvent>(
+			Func<IDomainEventEnvelope<TEvent>, IServiceProvider, CancellationToken, Task> handler) where TEvent : IDomainEvent
+		{
+			_handlers.Add(new DomainEventHandler(_aggregateType, typeof(TEvent),
+				(e, p, cancellationToken) => handler((IDomainEventEnvelope<TEvent>) e, p, cancellationToken)));
 			return this;
 		}
 
@@ -48,10 +65,10 @@ namespace IO.Eventuate.Tram.Events.Subscriber
 			where TEvent : IDomainEvent
 			where TEventHandler : IDomainEventHandler<TEvent>
 		{
-			_handlers.Add(new DomainEventHandler(_aggregateType, typeof(TEvent), async (e, p) =>
+			_handlers.Add(new DomainEventHandler(_aggregateType, typeof(TEvent), async (e, p, cancellationToken) =>
 			{
 				var eventHandler = p.GetRequiredService<TEventHandler>();
-				await eventHandler.HandleAsync((IDomainEventEnvelope<TEvent>) e);
+				await eventHandler.HandleAsync((IDomainEventEnvelope<TEvent>) e, cancellationToken);
 			}));
 			return this;
 		}

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Threading;
 using System.Threading.Tasks;
 using IO.Eventuate.Tram.Messaging.Common;
 using Microsoft.Extensions.Logging;
@@ -25,7 +26,7 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 			_dispatcherContext = $"SubscriberId='{subscriberId}'";
 		}
 
-		public SwimlaneDispatcherBacklog Dispatch(IMessage message, int swimlane, Func<IMessage, Task> target)
+		public SwimlaneDispatcherBacklog Dispatch(IMessage message, int swimlane, Func<IMessage, CancellationToken, Task> target)
 		{
 			var logContext = $"{nameof(Dispatch)} for {_dispatcherContext}, swimlane='{swimlane}', MessageId={message.Id}";
 			_logger.LogDebug($"+{logContext}");

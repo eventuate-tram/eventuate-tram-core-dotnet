@@ -7,6 +7,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Confluent.Kafka;
 using IO.Eventuate.Tram.Consumer.Common;
@@ -51,13 +52,13 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 			                 $"handler='{handler.Method.Name}'";
 			_logger.LogDebug($"+{logContext}");
 			
-			Func<SubscriberIdAndMessage, IServiceProvider, Task> decoratedHandler = _decoratedMessageHandlerFactory.Decorate(handler);
+			Func<SubscriberIdAndMessage, IServiceProvider, CancellationToken, Task> decoratedHandler = _decoratedMessageHandlerFactory.Decorate(handler);
 			
 			var swimLaneBasedDispatcher = new SwimlaneBasedDispatcher(subscriberId, _loggerFactory);
 
 			EventuateKafkaConsumerMessageHandler kcHandler =
 				(record, completionCallback) => swimLaneBasedDispatcher.Dispatch(ToMessage(record), record.Partition,
-					message => HandleAsync(message, completionCallback, subscriberId, decoratedHandler));
+					(message, cancellationToken) => HandleAsync(message, completionCallback, subscriberId, decoratedHandler, cancellationToken));
 			
 			var kc = new EventuateKafkaConsumer(subscriberId,
 				kcHandler,
@@ -82,14 +83,14 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 		}
 
 		private async Task HandleAsync(IMessage message, Action<Exception> completionCallback, string subscriberId,
-			Func<SubscriberIdAndMessage, IServiceProvider, Task> decoratedHandler)
+			Func<SubscriberIdAndMessage, IServiceProvider, CancellationToken, Task> decoratedHandler, CancellationToken cancellationToken)
 		{
 			try
 			{
 				// Creating a service scope and passing the scope's service provider to handlers
 				// so they can resolve scoped services
 				using IServiceScope scope = _serviceScopeFactory.CreateScope();
-				await decoratedHandler(new SubscriberIdAndMessage(subscriberId, message), scope.ServiceProvider);
+				await decoratedHandler(new SubscriberIdAndMessage(subscriberId, message), scope.ServiceProvider, cancellationToken);
 				completionCallback(null);
 			}
 			catch (Exception e)

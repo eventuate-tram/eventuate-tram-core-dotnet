@@ -6,10 +6,11 @@
  */
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using IO.Eventuate.Tram.Messaging.Common;
 
 namespace IO.Eventuate.Tram.Messaging.Consumer
 {
-	public delegate Task MessageHandlerAsync(IMessage message, IServiceProvider serviceProvider);
+	public delegate Task MessageHandlerAsync(IMessage message, IServiceProvider serviceProvider, CancellationToken cancellationToken);
 }

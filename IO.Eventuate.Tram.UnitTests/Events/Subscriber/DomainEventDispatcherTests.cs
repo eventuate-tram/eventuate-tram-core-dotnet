@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using IO.Eventuate.Tram.Events.Common;
 using IO.Eventuate.Tram.Events.Publisher;
@@ -65,7 +66,7 @@ namespace IO.Eventuate.Tram.UnitTests.Events.Subscriber
 			// Act
             await dispatcher.MessageHandlerAsync(DomainEventPublisher.MakeMessageForDomainEvent(AggregateType,
                 AggregateId, new Dictionary<string, string> {{ MessageHeaders.Id, _messageId } },
-                new MyDomainEvent(), eventTypeNamingStrategy), serviceProvider);
+                new MyDomainEvent(), eventTypeNamingStrategy), serviceProvider, CancellationToken.None);
 
 			// Assert
             Assert.True(target.Queue.TryPeek(out var dee));
