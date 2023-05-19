@@ -6,6 +6,7 @@
  */
 
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace IO.Eventuate.Tram.Messaging.Consumer
 {
@@ -26,6 +27,6 @@ namespace IO.Eventuate.Tram.Messaging.Consumer
 
 		string GetId();
 
-		void Close();
+		Task CloseAsync();
 	}
 }

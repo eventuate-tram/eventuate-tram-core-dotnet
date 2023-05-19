@@ -18,7 +18,7 @@ using Microsoft.Extensions.Logging;
 
 namespace IO.Eventuate.Tram.Consumer.Kafka
 {
-	public class KafkaMessageConsumer : IMessageConsumer, IDisposable
+	public class KafkaMessageConsumer : IMessageConsumer//, IDisposable
 	{
 		private readonly ILogger _logger;
 		private readonly EventuateKafkaConsumerConfigurationProperties _eventuateKafkaConsumerConfigurationProperties;
@@ -72,11 +72,11 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 			kc.Start();
 			
 			_logger.LogDebug($"-{logContext}");
-			return new MessageSubscription(() =>
+			return new MessageSubscription(async () =>
 			{
-				swimLaneBasedDispatcher.Stop();
+				await swimLaneBasedDispatcher.StopAsync();
 				_dispatchers.Remove(swimLaneBasedDispatcher);
-				kc.Dispose();
+				await kc.StopAsync();
 				_consumers.Remove(kc);
 			});
 		}
@@ -104,39 +104,39 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 			return _id;
 		}
 
-		public void Close()
+		public async Task CloseAsync()
 		{
-			_logger.LogDebug($"+{nameof(Close)}");
+			_logger.LogDebug($"+{nameof(CloseAsync)}");
 			
 			foreach (SwimlaneBasedDispatcher dispatcher in _dispatchers)
 			{
-				dispatcher.Stop();
+				await dispatcher.StopAsync();
 			}
 			_dispatchers.Clear();
 
 			foreach (EventuateKafkaConsumer consumer in _consumers)
 			{
-				consumer.Dispose();
+				await consumer.StopAsync();
 			}
 			_consumers.Clear();
 			
-			_logger.LogDebug($"-{nameof(Close)}");
+			_logger.LogDebug($"-{nameof(CloseAsync)}");
 		}
 
 		/// <inheritdoc />
 		private class MessageSubscription : IMessageSubscription
 		{
-			private readonly Action _unsubscribe;
+			private readonly Func<Task> _unsubscribe;
 
-			public MessageSubscription(Action unsubscribe)
+			public MessageSubscription(Func<Task> unsubscribe)
 			{
 				_unsubscribe = unsubscribe;
 			}
 
 			/// <inheritdoc />
-			public void Unsubscribe()
+			public async Task UnsubscribeAsync()
 			{
-				_unsubscribe();
+				await _unsubscribe();
 			}
 		}
 		
@@ -145,11 +145,11 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 			return JsonMapper.FromJson<Message>(record.Message.Value);
 		}
 
-		public void Dispose()
-		{
-			_logger.LogDebug($"+{nameof(Dispose)}");
-			Close();
-			_logger.LogDebug($"-{nameof(Dispose)}");
-		}
+		// public void Dispose()
+		// {
+		// 	_logger.LogDebug($"+{nameof(Dispose)}");
+		// 	Close();
+		// 	_logger.LogDebug($"-{nameof(Dispose)}");
+		// }
 	}
 }

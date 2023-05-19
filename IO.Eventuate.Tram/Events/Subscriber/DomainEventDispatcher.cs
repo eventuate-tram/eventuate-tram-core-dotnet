@@ -53,9 +53,14 @@ namespace IO.Eventuate.Tram.Events.Subscriber
 				MessageHandlerAsync);
 		}
 
-		public void Stop()
+		public async Task StopAsync()
 		{
-			_subscription?.Unsubscribe();
+			if (_subscription == null)
+			{
+				return;
+			}
+			
+			await _subscription.UnsubscribeAsync();
 		}
 
 		public async Task MessageHandlerAsync(IMessage message, IServiceProvider serviceProvider)

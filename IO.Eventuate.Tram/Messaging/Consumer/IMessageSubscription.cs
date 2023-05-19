@@ -5,6 +5,8 @@
  * package:	io.eventuate.tram.messaging.consumer
  */
 
+using System.Threading.Tasks;
+
 namespace IO.Eventuate.Tram.Messaging.Consumer
 {
 	/// <summary>
@@ -15,6 +17,6 @@ namespace IO.Eventuate.Tram.Messaging.Consumer
 		/// <summary>
 		/// Unsubscribe from the subscription
 		/// </summary>
-		void Unsubscribe();
+		Task UnsubscribeAsync();
 	}
 }

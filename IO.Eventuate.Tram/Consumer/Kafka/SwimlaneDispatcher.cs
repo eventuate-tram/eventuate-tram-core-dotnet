@@ -111,9 +111,9 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 		/// <summary>
 		/// Stops the dispatcher from processing any further messages
 		/// </summary>
-		public void Stop()
+		public async Task StopAsync()
 		{
-			var logContext = $"{nameof(Stop)} for {_dispatcherContext}";
+			var logContext = $"{nameof(StopAsync)} for {_dispatcherContext}";
 			_logger.LogDebug($"+{logContext}");
 			lock (_lockObject)
 			{
@@ -134,21 +134,11 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 
 			try
 			{
-				_processQueuedMessagesTask.Wait();
+				await _processQueuedMessagesTask;
 			}
-			catch (AggregateException e)
+			catch (OperationCanceledException)
 			{
-				foreach (Exception exception in e.InnerExceptions)
-				{
-					if (exception is OperationCanceledException)
-					{
-						_logger.LogDebug($"{logContext}: Cancelled process message queue task");
-					}
-					else
-					{
-						throw exception;
-					}
-				}
+				_logger.LogDebug($"{logContext}: Cancelled process message queue task");
 			}
 			
 			_cancellationTokenSource.Dispose();

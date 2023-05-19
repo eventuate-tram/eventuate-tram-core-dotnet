@@ -49,7 +49,7 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 						if (_dispatcherStopped)
 						{
 							_logger.LogDebug($"{logContext}: Stopping newly created SwimlaneDispatcher");
-							r.Stop();
+							// r.Stop();
 						}
 					}
 				}
@@ -64,16 +64,16 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 		/// <summary>
 		/// Stop the dispatcher from processing any further messages
 		/// </summary>
-		public void Stop()
+		public async Task StopAsync()
 		{
-			var logContext = $"{nameof(Stop)} for {_dispatcherContext}";
+			var logContext = $"{nameof(StopAsync)} for {_dispatcherContext}";
 			_logger.LogDebug($"+{logContext}");
-			lock (_lockObject)
+			// lock (_lockObject)
 			{
 				_dispatcherStopped = true;
 				foreach (SwimlaneDispatcher dispatcher in _map.Values)
 				{
-					dispatcher.Stop();
+					await dispatcher.StopAsync();
 				}
 			}
 
