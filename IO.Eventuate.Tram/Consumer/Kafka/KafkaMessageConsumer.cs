@@ -19,7 +19,7 @@ using Microsoft.Extensions.Logging;
 
 namespace IO.Eventuate.Tram.Consumer.Kafka
 {
-	public class KafkaMessageConsumer : IMessageConsumer//, IDisposable
+	public class KafkaMessageConsumer : IMessageConsumer, IAsyncDisposable
 	{
 		private readonly ILogger _logger;
 		private readonly EventuateKafkaConsumerConfigurationProperties _eventuateKafkaConsumerConfigurationProperties;
@@ -146,11 +146,18 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 			return JsonMapper.FromJson<Message>(record.Message.Value);
 		}
 
-		// public void Dispose()
-		// {
-		// 	_logger.LogDebug($"+{nameof(Dispose)}");
-		// 	Close();
-		// 	_logger.LogDebug($"-{nameof(Dispose)}");
-		// }
+		// Following recommended standard implementation of DisposeAsync for unsealed classes
+		public async ValueTask DisposeAsync()
+		{
+			_logger.LogDebug($"+{nameof(DisposeAsync)}");
+			await DisposeAsyncCore();
+			GC.SuppressFinalize(this);
+			_logger.LogDebug($"-{nameof(DisposeAsync)}");
+		}
+		
+		protected virtual async ValueTask DisposeAsyncCore()
+		{
+			await CloseAsync();
+		}
 	}
 }
