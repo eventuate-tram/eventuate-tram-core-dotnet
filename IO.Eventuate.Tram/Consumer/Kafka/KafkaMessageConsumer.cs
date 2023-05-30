@@ -57,7 +57,7 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 			var swimLaneBasedDispatcher = new SwimlaneBasedDispatcher(subscriberId, _loggerFactory);
 
 			EventuateKafkaConsumerMessageHandler kcHandler =
-				(record, completionCallback) => swimLaneBasedDispatcher.Dispatch(ToMessage(record), record.Partition,
+				async (record, completionCallback) => await swimLaneBasedDispatcher.DispatchAsync(ToMessage(record), record.Partition,
 					(message, cancellationToken) => HandleAsync(message, completionCallback, subscriberId, decoratedHandler, cancellationToken));
 			
 			var kc = new EventuateKafkaConsumer(subscriberId,

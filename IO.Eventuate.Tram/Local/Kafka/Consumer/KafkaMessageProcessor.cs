@@ -8,6 +8,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Confluent.Kafka;
 using Microsoft.Extensions.Logging;
 
@@ -43,15 +44,15 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 			_offsetTracker = new OffsetTracker(_logger);
 		}
 
-		public void Process(ConsumeResult<string, string> record)
+		public async Task ProcessAsync(ConsumeResult<string, string> record)
 		{
-			var logContext = $"{nameof(Process)} for {_loggingObjectContext}, " +
+			var logContext = $"{nameof(ProcessAsync)} for {_loggingObjectContext}, " +
 			                 $"record.Key='{record.Message.Key}', record.Topic='{record.Topic}'";
 			_logger.LogDebug($"+{logContext}");
 			ThrowExceptionIfHandlerFailed();
 			
 			_offsetTracker.NoteUnprocessed(new TopicPartition(record.Topic, record.Partition), record.Offset);
-			IMessageConsumerBacklog consumerBacklog = _handler(record, e =>
+			IMessageConsumerBacklog consumerBacklog = await _handler(record, e =>
 			{
 				if (e != null)
 				{

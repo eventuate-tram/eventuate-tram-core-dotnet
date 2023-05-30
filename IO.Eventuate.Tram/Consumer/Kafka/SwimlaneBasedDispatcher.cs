@@ -26,14 +26,15 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 			_dispatcherContext = $"SubscriberId='{subscriberId}'";
 		}
 
-		public SwimlaneDispatcherBacklog Dispatch(IMessage message, int swimlane, Func<IMessage, CancellationToken, Task> target)
+		public async Task<SwimlaneDispatcherBacklog> DispatchAsync(IMessage message, int swimlane, Func<IMessage, CancellationToken, Task> target)
 		{
-			var logContext = $"{nameof(Dispatch)} for {_dispatcherContext}, swimlane='{swimlane}', MessageId={message.Id}";
+			var logContext = $"{nameof(DispatchAsync)} for {_dispatcherContext}, swimlane='{swimlane}', MessageId={message.Id}";
 			_logger.LogDebug($"+{logContext}");
 			if (!_map.TryGetValue(swimlane, out SwimlaneDispatcher swimlaneDispatcher))
 			{
 				_logger.LogDebug($"{logContext}: No dispatcher found, attempting to create");
 				swimlaneDispatcher = new SwimlaneDispatcher(_subscriberId, swimlane, _loggerFactory.CreateLogger<SwimlaneDispatcher>());
+
 				SwimlaneDispatcher r = _map.GetOrAdd(swimlane, swimlaneDispatcher);
 				if (r != swimlaneDispatcher)
 				{
@@ -45,13 +46,10 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 					_logger.LogDebug($"{logContext}: Using newly created SwimlaneDispatcher");
 
 					// If the dispatcher is stopped, make sure we stop the new swim lane dispatcher
-					lock (_lockObject)
+					if (_dispatcherStopped)
 					{
-						if (_dispatcherStopped)
-						{
-							_logger.LogDebug($"{logContext}: Stopping newly created SwimlaneDispatcher");
-							// r.Stop();
-						}
+						_logger.LogDebug($"{logContext}: Stopping newly created SwimlaneDispatcher");
+						await r.StopAsync();
 					}
 				}
 			}
@@ -69,13 +67,10 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 		{
 			var logContext = $"{nameof(StopAsync)} for {_dispatcherContext}";
 			_logger.LogDebug($"+{logContext}");
-			// lock (_lockObject)
+			_dispatcherStopped = true;
+			foreach (SwimlaneDispatcher dispatcher in _map.Values)
 			{
-				_dispatcherStopped = true;
-				foreach (SwimlaneDispatcher dispatcher in _map.Values)
-				{
-					await dispatcher.StopAsync();
-				}
+				await dispatcher.StopAsync();
 			}
 
 			_logger.LogDebug($"-{logContext}");

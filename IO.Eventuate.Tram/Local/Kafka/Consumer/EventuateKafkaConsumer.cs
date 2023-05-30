@@ -124,7 +124,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 				// (prevent setting it to it started after it has potentially already been set to stopped)
 				_state = EventuateKafkaConsumerState.Started;
 
-				_consumeTask = Task.Run(() =>
+				_consumeTask = Task.Run(async () =>
 				{
 					try
 					{
@@ -139,7 +139,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 								{
 									_logger.LogDebug($"{logContext}: process record at offset='{record.Offset}', " +
 									                 $"key='{record.Message.Key}', value='{record.Message.Value}'");
-									processor.Process(record);
+									await processor.ProcessAsync(record);
 								}
 								else
 								{
