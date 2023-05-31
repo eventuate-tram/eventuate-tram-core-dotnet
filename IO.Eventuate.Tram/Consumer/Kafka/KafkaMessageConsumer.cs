@@ -77,7 +77,7 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 			{
 				await swimLaneBasedDispatcher.StopAsync();
 				_dispatchers.Remove(swimLaneBasedDispatcher);
-				await kc.StopAsync();
+				await kc.DisposeAsync();
 				_consumers.Remove(kc);
 			});
 		}
@@ -117,7 +117,7 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 
 			foreach (EventuateKafkaConsumer consumer in _consumers)
 			{
-				await consumer.StopAsync();
+				await consumer.DisposeAsync();
 			}
 			_consumers.Clear();
 			
@@ -149,15 +149,15 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 		// Following recommended standard implementation of DisposeAsync for unsealed classes
 		public async ValueTask DisposeAsync()
 		{
-			_logger.LogDebug($"+{nameof(DisposeAsync)}");
 			await DisposeAsyncCore();
 			GC.SuppressFinalize(this);
-			_logger.LogDebug($"-{nameof(DisposeAsync)}");
 		}
 		
 		protected virtual async ValueTask DisposeAsyncCore()
 		{
+			_logger.LogDebug($"+{nameof(DisposeAsyncCore)}");
 			await CloseAsync();
+			_logger.LogDebug($"-{nameof(DisposeAsyncCore)}");
 		}
 	}
 }

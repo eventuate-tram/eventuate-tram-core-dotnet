@@ -20,7 +20,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 	/// an event is received.
 	/// Disposing of the the consumer shuts down the subscription.
 	/// </summary>
-	public class EventuateKafkaConsumer //: IDisposable
+	public class EventuateKafkaConsumer : IAsyncDisposable
 	{
 		private const int AdminClientTimeoutMilliseconds = 10;
 
@@ -214,10 +214,17 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 				throw;
 			}
 		}
-
-		public async Task StopAsync()
+		
+		// Following recommended standard implementation of DisposeAsync for unsealed classes
+		public async ValueTask DisposeAsync()
 		{
-			var logContext = $"{nameof(StopAsync)} for SubscriberId={_subscriberId}";
+			await DisposeAsyncCore();
+			GC.SuppressFinalize(this);
+		}
+		
+		protected virtual async ValueTask DisposeAsyncCore()
+		{
+			var logContext = $"{nameof(DisposeAsyncCore)} for SubscriberId={_subscriberId}";
 			_logger.LogDebug($"+{logContext}");
 			if (!_cancellationTokenSource.IsCancellationRequested)
 			{
