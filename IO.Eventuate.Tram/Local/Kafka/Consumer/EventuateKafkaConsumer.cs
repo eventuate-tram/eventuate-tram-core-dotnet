@@ -186,8 +186,16 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 					}
 					catch (KafkaMessageProcessorFailedException e)
 					{
-						_logger.LogError($"{logContext}: Terminating due to KafkaMessageProcessorFailedException - {e}");
-						_state = EventuateKafkaConsumerState.MessageHandlingFailed;
+						if (e.InnerException is OperationCanceledException)
+						{
+							_logger.LogDebug($"{logContext}: Terminating due to OperationCanceledException during message handling - {e}");
+							_state = EventuateKafkaConsumerState.Stopped;
+						}
+						else
+						{
+							_logger.LogError($"{logContext}: Terminating due to KafkaMessageProcessorFailedException - {e}");
+							_state = EventuateKafkaConsumerState.MessageHandlingFailed;
+						}
 					}
 					catch (Exception e)
 					{
