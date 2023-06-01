@@ -100,9 +100,10 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 		public void Start()
 		{
 			var logContext = $"{nameof(Start)} for SubscriberId={_subscriberId}";
+			IConsumer<string, string> consumer = null;
 			try
 			{
-				IConsumer<string, string> consumer = new ConsumerBuilder<string, string>(_consumerProperties).Build();
+				consumer = new ConsumerBuilder<string, string>(_consumerProperties).Build();
 				var processor = new KafkaMessageProcessor(_subscriberId, _handler,
 					_loggerFactory.CreateLogger<KafkaMessageProcessor>());
 				var backPressureManager = new BackPressureManager(_backPressureConfig);
@@ -124,6 +125,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 				// (prevent setting it to it started after it has potentially already been set to stopped)
 				_state = EventuateKafkaConsumerState.Started;
 
+				// ReSharper disable AccessToDisposedClosure - consumer is disposed outside of the closure only if the closure doesn't execute
 				_consumeTask = Task.Run(async () =>
 				{
 					try
@@ -206,11 +208,14 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 						_logger.LogDebug($"{logContext}: Stopped in state {_state.ToString()}");
 					}
 				}, _cancellationTokenSource.Token);
+				// ReSharper restore AccessToDisposedClosure
 			}
 			catch (Exception e)
 			{
 				_logger.LogError(e, $"{logContext}: Error subscribing");
 				_state = EventuateKafkaConsumerState.FailedToStart;
+				consumer?.Close();
+				consumer?.Dispose();
 				throw;
 			}
 		}
