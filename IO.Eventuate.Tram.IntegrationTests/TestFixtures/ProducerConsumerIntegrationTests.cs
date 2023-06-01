@@ -348,12 +348,16 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
         }
         
         [Test]
-        public async Task PublishAsync_TestHostShutdownDuringProcessing_CurrentMessageProcessedAndOtherNextMessageNotStarted()
+        [TestCase(true)]
+        [TestCase(false)]
+        public async Task PublishAsync_TestHostShutdownDuringProcessing_CurrentMessageProcessedOrCanceledAndOtherNextMessageNotStarted(bool handlerCancelsWork)
         {
             // Arrange
+            TestEventConsumer testConsumer = GetTestConsumer();
+            testConsumer.DelayHandlerCancels = handlerCancelsWork;
             TestMessageTypeDelay msgA = new TestMessageTypeDelay($"msgA-{Guid.NewGuid()}", 1);
             TestMessageTypeDelay msgB = new TestMessageTypeDelay($"msgB-{Guid.NewGuid()}", 2);
-            TestEventConsumer.EventStatistics eventStatistics = GetTestConsumer().GetEventStatistics(
+            TestEventConsumer.EventStatistics eventStatistics = testConsumer.GetEventStatistics(
                 typeof(TestMessageTypeDelay));
 
             // Act - Publish some type 3 messages
@@ -377,11 +381,16 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             // Assert - First message processing started but not completed before shutdown
             Assert.That(pingsBeforeShutdown.Length, Is.EqualTo(1));
             Assert.That(pingsBeforeShutdown[0], Contains.Substring("Received event").And.Contains(msgA.Name));
-            // Verify first message processing completed by end of shutdown
-            Assert.That(pingsAfterShutdown.Length, Is.EqualTo(2));
-            Assert.That(pingsAfterShutdown[1], Contains.Substring($"Processed event").And.Contains(msgA.Name));
+            // Verify first message processing completed or not by end of shutdown (shouldn't complete if handlerCancels)
+            int expectedNumberOfLinesAfterShutdown = handlerCancelsWork ? 1 : 2;
+            Assert.That(pingsAfterShutdown.Length, Is.EqualTo(expectedNumberOfLinesAfterShutdown));
+            if (!handlerCancelsWork)
+            {
+                Assert.That(pingsAfterShutdown[1], Contains.Substring($"Processed event").And.Contains(msgA.Name));
+            }
+
             // Verify second message not started after shutdown
-            Assert.That(delayedPings.Length, Is.EqualTo(2));
+            Assert.That(delayedPings.Length, Is.EqualTo(expectedNumberOfLinesAfterShutdown));
             Assert.That(delayedPings, Is.EquivalentTo(pingsAfterShutdown));
         }
 

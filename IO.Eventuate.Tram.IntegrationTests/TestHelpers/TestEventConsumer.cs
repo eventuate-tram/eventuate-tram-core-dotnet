@@ -37,6 +37,8 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers
 
         private readonly Dictionary<Type, EventStatistics> _statisticsForEvent;
         public int ExceptionCount;
+        
+        public bool DelayHandlerCancels { get; set; }
 
         public TestEventConsumer(ILogger<TestEventConsumer> logger)
         {
@@ -71,6 +73,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers
                 eventStatistics.ReceivedMessages = new List<IDomainEventEnvelope<IDomainEvent>>();
             }
             ExceptionCount = 0;
+            DelayHandlerCancels = false;
         }
 
         public int TotalMessageCount()
@@ -127,17 +130,17 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers
             return Task.CompletedTask;
         }
         
-        private Task HandleMessageTypeDelayEventAsync(IDomainEventEnvelope<TestMessageTypeDelay> @event,
-            IServiceProvider serviceProvider)
+        private async Task HandleMessageTypeDelayEventAsync(IDomainEventEnvelope<TestMessageTypeDelay> @event,
+            IServiceProvider serviceProvider, CancellationToken cancellationToken)
         {
+            cancellationToken = DelayHandlerCancels ? cancellationToken : CancellationToken.None;
             _logger.LogDebug("Got message TestMessageTypeDelay with id={} and value={}", @event.EventId,
                 @event.Event.ToString());
-            File.AppendAllText(IntegrationTestsBase.PingFileName, $"Received event '{@event.Message.Payload}' with value '{@event.Event.Value}'\n");
+            await File.AppendAllTextAsync(IntegrationTestsBase.PingFileName, $"Received event '{@event.Message.Payload}' with value '{@event.Event.Value}'\n", cancellationToken);
             EventStatistics eventStatistics = GetEventStatistics(typeof(TestMessageTypeDelay));
             HandleTestMessageEvent(@event, eventStatistics);
-            Thread.Sleep(MessageType3ProcessingDelay);
-            File.AppendAllText(IntegrationTestsBase.PingFileName, $"Processed event '{@event.Message.Payload}' with value '{@event.Event.Value}'\n");
-            return Task.CompletedTask;
+            await Task.Delay(MessageType3ProcessingDelay, cancellationToken);
+            await File.AppendAllTextAsync(IntegrationTestsBase.PingFileName, $"Processed event '{@event.Message.Payload}' with value '{@event.Event.Value}'\n", cancellationToken);
         }
 
         public void HandleTestMessageEvent(IDomainEventEnvelope<IDomainEvent> @event, EventStatistics eventStatistics)
