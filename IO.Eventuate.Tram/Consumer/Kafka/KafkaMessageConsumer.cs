@@ -7,6 +7,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Confluent.Kafka;
@@ -29,8 +30,9 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 
 		private readonly string _id = Guid.NewGuid().ToString();
 		private readonly string _bootstrapServers;
-		private readonly List<EventuateKafkaConsumer> _consumers = new List<EventuateKafkaConsumer>();
-		private readonly List<SwimlaneBasedDispatcher> _dispatchers = new List<SwimlaneBasedDispatcher>();
+		private readonly List<EventuateKafkaConsumer> _consumers = new();
+		private readonly List<SwimlaneBasedDispatcher> _dispatchers = new();
+		private readonly object _lockObject = new();
 
 		public KafkaMessageConsumer(string bootstrapServers,
 			EventuateKafkaConsumerConfigurationProperties eventuateKafkaConsumerConfigurationProperties,
@@ -67,8 +69,11 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 				_eventuateKafkaConsumerConfigurationProperties,
 				_loggerFactory);
 
-			_consumers.Add(kc);
-			_dispatchers.Add(swimLaneBasedDispatcher);
+			lock (_lockObject)
+			{
+				_consumers.Add(kc);
+				_dispatchers.Add(swimLaneBasedDispatcher);
+			}
 
 			kc.Start();
 			
@@ -76,9 +81,12 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 			return new MessageSubscription(async () =>
 			{
 				await swimLaneBasedDispatcher.StopAsync();
-				_dispatchers.Remove(swimLaneBasedDispatcher);
 				await kc.DisposeAsync();
-				_consumers.Remove(kc);
+				lock (_lockObject)
+				{
+					_dispatchers.Remove(swimLaneBasedDispatcher);
+					_consumers.Remove(kc);
+				}
 			});
 		}
 
@@ -108,18 +116,26 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 		public async Task CloseAsync()
 		{
 			_logger.LogDebug($"+{nameof(CloseAsync)}");
-			
-			foreach (SwimlaneBasedDispatcher dispatcher in _dispatchers)
+
+			List<SwimlaneBasedDispatcher> dispatchers;
+			List<EventuateKafkaConsumer> consumers;
+			lock (_lockObject)
+			{
+				dispatchers = _dispatchers.ToList();
+				_dispatchers.Clear();
+				consumers = _consumers.ToList();
+				_consumers.Clear();
+			}
+
+			foreach (SwimlaneBasedDispatcher dispatcher in dispatchers)
 			{
 				await dispatcher.StopAsync();
 			}
-			_dispatchers.Clear();
 
-			foreach (EventuateKafkaConsumer consumer in _consumers)
+			foreach (EventuateKafkaConsumer consumer in consumers)
 			{
 				await consumer.DisposeAsync();
 			}
-			_consumers.Clear();
 			
 			_logger.LogDebug($"-{nameof(CloseAsync)}");
 		}
