@@ -9,10 +9,9 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 {
 	public class SwimlaneBasedDispatcher
 	{
-		private readonly object _lockObject = new object();
 		private bool _dispatcherStopped;
 
-		private readonly ConcurrentDictionary<int, SwimlaneDispatcher> _map = new ConcurrentDictionary<int, SwimlaneDispatcher>();
+		private readonly ConcurrentDictionary<int, SwimlaneDispatcher> _map = new();
 		private readonly string _subscriberId;
 		private readonly ILoggerFactory _loggerFactory;
 		private readonly ILogger _logger;
