@@ -29,8 +29,10 @@ namespace IO.Eventuate.Tram.Events.Subscriber
 
 		public async Task StopAsync(CancellationToken cancellationToken)
 		{
-			Task[] stopTasks = _domainEventDispatchers.Select(d => d.StopAsync()).ToArray();
-			await Task.WhenAll(stopTasks);
+			foreach (DomainEventDispatcher domainEventDispatcher in _domainEventDispatchers)
+			{
+				await domainEventDispatcher.StopAsync();
+			}
 		}
 	}
 }
