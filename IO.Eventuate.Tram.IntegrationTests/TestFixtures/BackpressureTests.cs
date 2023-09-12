@@ -28,7 +28,7 @@ public class BackpressureTests : IntegrationTestsBase
 			}
 		};
 		TestSetup("eventuate", false, properties);
-		CleanupTest();
+		await CleanupTestAsync();
 	}
 
 	[TearDown]

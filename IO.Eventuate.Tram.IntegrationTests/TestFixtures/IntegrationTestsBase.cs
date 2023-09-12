@@ -24,6 +24,8 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
         protected const string AggregateType12 = "TestMessage12Topic";
         protected const string AggregateType34 = "TestMessage34Topic";
         protected const string AggregateTypeDelay = "TestMessageDelayTopic";
+        protected const string TestPartitionAssignmentTopic1 = "TestPartitionAssignmentTopic1";
+        protected const string TestPartitionAssignmentTopic2 = "TestPartitionAssignmentTopic2";
         protected string EventuateDatabaseSchemaName = "eventuate";
         public static string PingFileName = "ping.txt";
 
@@ -75,9 +77,9 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             }
         }
 
-        protected void CleanupTest()
+        protected async Task CleanupTestAsync()
         {
-            ClearDb(GetDbContext(), EventuateDatabaseSchemaName);
+            await ClearDbAsync(GetDbContext(), EventuateDatabaseSchemaName);
             GetTestConsumer().Reset();
             GetTestMessageInterceptor()?.Reset();
         }
@@ -88,7 +90,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             config.BootstrapServers = TestSettings.KafkaBootstrapServers;
             using var admin = new AdminClientBuilder(config).Build();
             Metadata kafkaMetadata = admin.GetMetadata(TimeSpan.FromSeconds(10));
-            foreach (var topic in new[] {AggregateType12, AggregateType34, AggregateTypeDelay})
+            foreach (var topic in new[] {AggregateType12, AggregateType34, AggregateTypeDelay, TestPartitionAssignmentTopic1, TestPartitionAssignmentTopic2})
             {
                 TopicMetadata paMessagesMetadata = kafkaMetadata.Topics.Find(t => t.Topic.Equals(topic));
                 if (paMessagesMetadata != null)
@@ -212,10 +214,10 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             return _dbContext;
         }
 
-        protected void ClearDb(EventuateTramDbContext dbContext, String eventuateDatabaseSchemaName)
+        protected static async Task ClearDbAsync(EventuateTramDbContext dbContext, String eventuateDatabaseSchemaName)
         {
-            dbContext.Database.ExecuteSqlRaw(String.Format("Delete from [{0}].[message]", eventuateDatabaseSchemaName));
-            dbContext.Database.ExecuteSqlRaw(String.Format("Delete from [{0}].[received_messages]", eventuateDatabaseSchemaName));
+            await dbContext.Database.ExecuteSqlRawAsync($"Delete from [{eventuateDatabaseSchemaName}].[message]");
+            await dbContext.Database.ExecuteSqlRawAsync($"Delete from [{eventuateDatabaseSchemaName}].[received_messages]");
         }
     }
 }
