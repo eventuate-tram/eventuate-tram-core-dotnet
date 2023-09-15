@@ -20,6 +20,11 @@ namespace IO.Eventuate.Tram.UnitTests.Events.Subscriber
         private String aggregateId = "xyz";
         private String messageId = "message-" + DateTime.Now;
 
+        public DomainEventDispatcherTests(string subscriberId)
+        {
+            _subscriberId = subscriberId;
+        }
+
         public class MyTarget
         {
             public ConcurrentQueue<IDomainEventEnvelope<IDomainEvent>> Queue = new ConcurrentQueue<IDomainEventEnvelope<IDomainEvent>>();
