@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using IO.Eventuate.Tram.Events.Common;
@@ -14,37 +14,32 @@ namespace IO.Eventuate.Tram.UnitTests.Events.Subscriber
 {
     public class DomainEventDispatcherTests
     {
-        private String _subscriberId = "test-subscriber-id";
-        private static String aggregateType = "AggregateType";
+        private const String SubscriberId = "123ABC";
+        private const String AggregateType = "AggregateType";
 
-        private String aggregateId = "xyz";
-        private String messageId = "message-" + DateTime.Now;
+        private const String AggregateId = "xyz";
+        private readonly String _messageId = "message-" + DateTime.Now;
 
-        public DomainEventDispatcherTests(string subscriberId)
+        private class MyTarget
         {
-            _subscriberId = subscriberId;
-        }
+            public readonly ConcurrentQueue<IDomainEventEnvelope<IDomainEvent>> Queue = new();
 
-        public class MyTarget
-        {
-            public ConcurrentQueue<IDomainEventEnvelope<IDomainEvent>> Queue = new ConcurrentQueue<IDomainEventEnvelope<IDomainEvent>>();
-
-            public DomainEventHandlers domainEventHandlers()
+            public DomainEventHandlers DomainEventHandlers()
             {
                 return DomainEventHandlersBuilder
-                    .ForAggregateType(aggregateType)
+                    .ForAggregateType(AggregateType)
                     .OnEvent<MyDomainEvent>(HandleAccountDebited)
                     .Build();
             }
 
-            internal void HandleAccountDebited(IDomainEventEnvelope<MyDomainEvent> message)
+            private void HandleAccountDebited(IDomainEventEnvelope<MyDomainEvent> message)
             {
                 Queue.Enqueue(message);
             }
 
         }
 
-        public class MyDomainEvent : IDomainEvent
+        private class MyDomainEvent : IDomainEvent
         {
         }
 
@@ -61,21 +56,21 @@ namespace IO.Eventuate.Tram.UnitTests.Events.Subscriber
             eventTypeNamingStrategy.GetEventTypeName(typeof(MyDomainEvent)).Returns(typeof(MyDomainEvent).FullName);
 
             DomainEventDispatcher dispatcher = new DomainEventDispatcher(
-	            _subscriberId, target.domainEventHandlers(), messageConsumer, eventTypeNamingStrategy, logger);
+	            SubscriberId, target.DomainEventHandlers(), messageConsumer, eventTypeNamingStrategy, logger);
 
             dispatcher.Initialize();
 
 			// Act
-            dispatcher.MessageHandler(DomainEventPublisher.MakeMessageForDomainEvent(aggregateType,
-                aggregateId, new Dictionary<string, string>() {{ MessageHeaders.Id, messageId } },
+            dispatcher.MessageHandler(DomainEventPublisher.MakeMessageForDomainEvent(AggregateType,
+                AggregateId, new Dictionary<string, string> {{ MessageHeaders.Id, _messageId } },
                 new MyDomainEvent(), eventTypeNamingStrategy), serviceProvider);
 
 			// Assert
             Assert.True(target.Queue.TryPeek(out var dee));
             Assert.NotNull(dee);
-            Assert.AreEqual(aggregateId, dee.AggregateId);
-            Assert.AreEqual(aggregateType, dee.AggregateType);
-            Assert.AreEqual(messageId, dee.EventId);
+            Assert.AreEqual(AggregateId, dee.AggregateId);
+            Assert.AreEqual(AggregateType, dee.AggregateType);
+            Assert.AreEqual(_messageId, dee.EventId);
         }
     }
 }
