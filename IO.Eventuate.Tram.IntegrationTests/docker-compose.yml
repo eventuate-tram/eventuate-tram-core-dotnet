@@ -36,6 +36,8 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
   kafka:
     image: confluentinc/cp-kafka:7.0.0
+    ports:
+      - "9092:9092"
     depends_on:
       - zookeeper
     environment:
@@ -45,6 +47,22 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
+  kafka-setup:
+    image: confluentinc/cp-kafka:7.0.0
+    depends_on:
+      - kafka
+    command: "bash -c 'echo Waiting for Kafka to be ready... && \
+               cub kafka-ready -b kafka:29092 1 20 && \
+               kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 1 --replication-factor 1 --topic TestMessage12Topic && \
+               kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 1 --replication-factor 1 --topic TestMessage34Topic && \
+               kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 1 --replication-factor 1 --topic TestMessageDelayTopic && \
+               exit'"
+    environment:
+      # The following settings are listed here only to satisfy the image's requirements.
+      # We override the image's `command` anyways, hence this container will not start a broker.
+      KAFKA_BROKER_ID: ignored
+      KAFKA_ZOOKEEPER_CONNECT: ignored
   cdcservice:
     image: eventuateio/eventuate-cdc-service:${CDC_SERVICE_DOCKER_VERSION:?You must set the CDC_SERVICE_DOCKER_VERSION environment variable.}
     depends_on:
@@ -70,7 +88,18 @@ services:
       EVENTUATE_CDC_PIPELINE_PIPELINE2_EVENTUATEDATABASESCHEMA: schema1
   mssql:
     image: mcr.microsoft.com/mssql/server:2017-CU20-ubuntu-16.04
+    ports:
+      - "1433:1433"
     environment:
       SA_PASSWORD: "TestPa$$word"
       ACCEPT_EULA: "Y"
       MSSQL_MEMORY_LIMIT_MB: "500"
+  kafka-ui:
+    image: provectuslabs/kafka-ui
+    ports:
+      - "9090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+      KAFKA_CLUSTERS_0_READONLY: "true"

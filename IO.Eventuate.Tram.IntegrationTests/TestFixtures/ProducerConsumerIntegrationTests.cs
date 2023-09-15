@@ -94,14 +94,14 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             GetTestPublisher().Publish(AggregateTypeDelay, AggregateTypeDelay, new List<IDomainEvent> {msgD});
 
             // Allow time for messages to process
-            int count = 20;
+            int count = 10;
             while (consumer.TotalMessageCount() < numberOfEvents && count > 0)
             {
-                TestContext.WriteLine($"Message Interceptor Count {consumer.TotalMessageCount()} ({count})");
+                TestContext.WriteLine($"TotalMessageCount: {consumer.TotalMessageCount()} ({count})");
                 Thread.Sleep(1000);
                 count--;
             }
-            TestContext.WriteLine($"Message Interceptor Count {consumer.TotalMessageCount()}");
+            TestContext.WriteLine($"TotalMessageCount: {consumer.TotalMessageCount()}");
 
             ShowTestResults();
 
