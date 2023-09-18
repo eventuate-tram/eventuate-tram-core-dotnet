@@ -19,7 +19,7 @@ jobs:
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: 3.1.201
+        dotnet-version: 6.0.414
 
     - name: Build
       env:
@@ -61,7 +61,7 @@ jobs:
       if: always()
       with:
         name: integration-test-results
-        path: IO.Eventuate.Tram.IntegrationTests/bin/Release/netcoreapp3.1/TestResults
+        path: IO.Eventuate.Tram.IntegrationTests/bin/Release/net6.0/TestResults
 
     - name: Publish nuget package
       # Don't publish nuget packages for builds triggered by pull requests (pull requests from forks won't have access to secrets anyway)
