@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Confluent.Kafka;
-using Confluent.Kafka.Admin;
 using IO.Eventuate.Tram.Database;
 using IO.Eventuate.Tram.Events.Publisher;
 using IO.Eventuate.Tram.IntegrationTests.TestHelpers;
@@ -31,6 +30,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
         protected TestSettings TestSettings;
 
         private static IHost _host;
+        private static IServiceScope _testServiceScope;
         private static EventuateTramDbContext _dbContext;
         private static IDomainEventPublisher _domainEventPublisher;
         private static TestEventConsumer _testEventConsumer;
@@ -66,10 +66,12 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             if (_host == null)
             {
                 _host = SetupTestHost(withInterceptor, consumerConfigProperties);
-                _dbContext = _host.Services.GetService<EventuateTramDbContext>();
-                _domainEventPublisher = _host.Services.GetService<IDomainEventPublisher>();
-                _testEventConsumer = _host.Services.GetService<TestEventConsumer>();
-                _interceptor = (TestMessageInterceptor)_host.Services.GetService<IMessageInterceptor>();
+                var scopeFactory = _host.Services.GetRequiredService<IServiceScopeFactory>();
+                _testServiceScope = scopeFactory.CreateScope();
+                _dbContext = _testServiceScope.ServiceProvider.GetRequiredService<EventuateTramDbContext>();
+                _domainEventPublisher = _testServiceScope.ServiceProvider.GetRequiredService<IDomainEventPublisher>();
+                _testEventConsumer = _testServiceScope.ServiceProvider.GetRequiredService<TestEventConsumer>();
+                _interceptor = (TestMessageInterceptor)_testServiceScope.ServiceProvider.GetService<IMessageInterceptor>();
             }
         }
 
@@ -181,6 +183,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             if (_host == null)
                 return;
 
+            _testServiceScope.Dispose();
             _host.StopAsync().Wait();
             _host.Dispose();
             _host = null;

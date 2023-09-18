@@ -62,6 +62,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers
         public IHost Build<TConsumerType>(bool withInterceptor) where TConsumerType : class
         {
             _host = new HostBuilder()
+                .UseDefaultServiceProvider(options => options.ValidateScopes = true)
                 .ConfigureServices((hostContext, services) =>
                 {
                     services.AddDbContext<EventuateTramDbContext>((provider, o) =>
@@ -77,7 +78,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers
                         });
                     if (withInterceptor)
                     {
-                        services.AddSingleton<IMessageInterceptor>(new TestMessageInterceptor());
+                        services.AddSingleton<IMessageInterceptor, TestMessageInterceptor>();
                     }
 
                     // Publisher Setup

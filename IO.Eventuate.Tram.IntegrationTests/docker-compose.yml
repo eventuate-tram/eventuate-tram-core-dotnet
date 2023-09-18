@@ -7,7 +7,7 @@ services:
     - mssql
     environment:
       TRAM_DB_SERVER: "mssql"
-      TRAM_SA_PASSWORD: "TestPa$$word"
+      TRAM_SA_PASSWORD: "TestPa55word"
       TRAM_DB: "TramDb"
       TRAM_SCHEMA: "eventuate"
       TRAM_SCHEMA2: "schema1"
@@ -24,7 +24,7 @@ services:
     - cdcservice
     environment:
       KafkaBootstrapServers: "kafka:29092"
-      ConnectionStrings__EventuateTramDbConnection: "Server=mssql;Database=TramDb;User Id=sa;Password=TestPa$$word"
+      ConnectionStrings__EventuateTramDbConnection: "Server=mssql;Database=TramDb;User Id=sa;Password=TestPa55word"
     volumes:
     - ./bin/Release/net6.0:/app
     working_dir: /app
@@ -74,7 +74,7 @@ services:
       EVENTUATE_CDC_READER_READER1_TYPE: polling
       EVENTUATE_CDC_READER_READER1_DATASOURCEURL: jdbc:sqlserver://mssql;databaseName=TramDb
       EVENTUATE_CDC_READER_READER1_DATASOURCEUSERNAME: sa
-      EVENTUATE_CDC_READER_READER1_DATASOURCEPASSWORD: TestPa$$word
+      EVENTUATE_CDC_READER_READER1_DATASOURCEPASSWORD: TestPa55word
       EVENTUATE_CDC_READER_READER1_DATASOURCEDRIVERCLASSNAME: com.microsoft.sqlserver.jdbc.SQLServerDriver
       EVENTUATE_CDC_READER_READER1_LEADERSHIPLOCKPATH: /eventuatelocal/cdc/leader/1
 
@@ -90,7 +90,7 @@ services:
     ports:
       - "1433:1433"
     environment:
-      SA_PASSWORD: "TestPa$$word"
+      SA_PASSWORD: "TestPa55word"
       ACCEPT_EULA: "Y"
       MSSQL_MEMORY_LIMIT_MB: "500"
   kafka-ui:
