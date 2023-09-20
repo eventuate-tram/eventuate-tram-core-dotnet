@@ -142,30 +142,30 @@ one handler service per event type, or handle multiple event types in the same h
 ```c#
 public class ExampleEventHandler : IDomainEventHandler<Example1Event>, IDomainEventHandler<Example2Event>
 {
-    private readonly ExampleDbContext _dbContext;
-    private readonly ILogger _logger;
+	private readonly ExampleDbContext _dbContext;
+	private readonly ILogger _logger;
 
-    public ExampleEventHandler(ExampleDbContext dbContext, ILogger<ExampleEventHandler> logger)
-    {
-        _dbContext = dbContext;
-        _logger = logger;
-    }
+	public ExampleEventHandler(ExampleDbContext dbContext, ILogger<ExampleEventHandler> logger)
+	{
+		_dbContext = dbContext;
+		_logger = logger;
+	}
     
-    public void Handle(IDomainEventEnvelope<Example1Event> @event)
-    {
-        _logger.LogDebug("Got message Example1Event with id={} and value={}", @event.EventId,
-            @event.Event.ToString());
-        _dbContext.DoSomething(...);
-        _dbContext.SaveChanges();
-    }
+	public async Task HandleAsync(IDomainEventEnvelope<Example1Event> @event, CancellationToken cancellationToken)
+	{
+		_logger.LogDebug("Got message Example1Event with id={EventId} and value={Event}", @event.EventId,
+			@event.Event.ToString());
+		_dbContext.DoSomething(...);
+		await _dbContext.SaveChangesAsync(cancellationToken);
+	}
 
-   public void Handle(IDomainEventEnvelope<Example2Event> @event)
-    {
-        _logger.LogDebug("Got message Example2Event with id={} and value={}", @event.EventId,
-            @event.Event.ToString());
-        _dbContext.DoSomething(...);
-        _dbContext.SaveChanges();
-    }
+	public async Task HandleAsync(IDomainEventEnvelope<Example2Event> @event, CancellationToken cancellationToken)
+	{
+		_logger.LogDebug("Got message Example2Event with id={EventId} and value={Event}", @event.EventId,
+			@event.Event.ToString());
+		_dbContext.DoSomething(...);
+		await _dbContext.SaveChangesAsync(cancellationToken);
+	}
 }
 ```
 
@@ -198,18 +198,18 @@ the DuplicateDetectingMessageHandlerDecorator:
 ```c#
 public class EventuateExecutionStrategyMessageHandlerDecorator : IMessageHandlerDecorator, IOrdered
 {
-    public Action<SubscriberIdAndMessage, IServiceProvider, IMessageHandlerDecoratorChain> Accept =>
-        (subscriberIdAndMessage, serviceProvider, chain) =>
-        {
-            var dbContext = serviceProvider.GetService<ApplicationDbContext>();
-            IExecutionStrategy executionStrategy = dbContext.Database.CreateExecutionStrategy();
-            executionStrategy.Execute(() =>
-            {
-                chain.InvokeNext(subscriberIdAndMessage, serviceProvider);
-            });
-        };
+	public Func<SubscriberIdAndMessage, IServiceProvider, IMessageHandlerDecoratorChain, CancellationToken, Task> Accept =>
+		async (subscriberIdAndMessage, serviceProvider, chain, cancellationToken) =>
+		{
+			var dbContext = serviceProvider.GetService<ApplicationDbContext>();
+			IExecutionStrategy executionStrategy = dbContext.Database.CreateExecutionStrategy();
+			await executionStrategy.ExecuteAsync(async () =>
+			{
+				await chain.InvokeNextAsync(subscriberIdAndMessage, serviceProvider, cancellationToken);
+			});
+		};
 
-    public int Order => BuiltInMessageHandlerDecoratorOrder.DuplicateDetectingMessageHandlerDecorator - 1;
+	public int Order => BuiltInMessageHandlerDecoratorOrder.DuplicateDetectingMessageHandlerDecorator - 1;
 }
 ```
 You will also need to register the EventuateExecutionStrategyMessageHandlerDecorator as a singleton:
@@ -226,32 +226,32 @@ Create an event consumer service and implement handlers for the different event 
 ```c#
 public class ExampleEventConsumer
 {
-    private readonly ILogger<ExampleEventConsumer> _logger;
+	private readonly ILogger<ExampleEventConsumer> _logger;
 
-    public ExampleEventConsumer(ILogger<ExampleEventConsumer> logger)
-    {
-        _logger = logger;
-    }
-    
-    public DomainEventHandlers DomainEventHandlers()
-    {
-        return DomainEventHandlersBuilder.ForAggregateType("ExampleAggregate")
-            .OnEvent<Example1Event>(HandleExample1Event)
-            .OnEvent<Example2Event>(HandleExample2Event)
-            .Build();
-    }
+	public ExampleEventConsumer(ILogger<ExampleEventConsumer> logger)
+	{
+		_logger = logger;
+	}
+	
+	public DomainEventHandlers DomainEventHandlers()
+	{
+		return DomainEventHandlersBuilder.ForAggregateType("ExampleAggregate")
+			.OnEvent<Example1Event>(HandleExample1EventAsync)
+			.OnEvent<Example2Event>(HandleExample2EventAsync)
+			.Build();
+	}
 
-    private void HandleExample1Event(IDomainEventEnvelope<Example1Event> @event)
-    {
-        _logger.LogDebug("Got Example1Event with id={} and value={}", @event.EventId,
-            @event.Event.ToString());
-    }
-
-    private void HandleExample2Event(IDomainEventEnvelope<Example2Event> @event)
-    {
-        _logger.LogDebug("Got message Example2Event with id={} and value={}", @event.EventId,
-            @event.Event.ToString());
-    }
+	private async Task HandleExample1EventAsync(IDomainEventEnvelope<Example1Event> @event)
+	{
+		_logger.LogDebug("Got Example1Event with id={EventId} and value={Event}", @event.EventId,
+			@event.Event.ToString());
+	}
+	
+	private async Task HandleExample2EventAsync(IDomainEventEnvelope<Example2Event> @event)
+	{
+		_logger.LogDebug("Got Example2Event with id={EventId} and value={Event}", @event.EventId,
+			@event.Event.ToString());
+	}
 }
 ```
 The aggregate type will be used as the Kafka topic.
