@@ -41,7 +41,7 @@ PollTimeout = 500; // default: 100
 ```c#
 BackPressure = new BackPressureConfig
 {
-    PauseThreshold = 100, // default: int.MaxValue
+    PauseThreshold = 100, // default: uint.MaxValue
     ResumeThreshold = 10  // default: 0
 };
 ```
