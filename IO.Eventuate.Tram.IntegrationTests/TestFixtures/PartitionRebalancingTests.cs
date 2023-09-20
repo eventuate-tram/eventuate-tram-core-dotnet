@@ -51,7 +51,7 @@ public class PartitionRebalancingTests : IntegrationTestsBase
 		builder.UseSqlServer(TestSettings.ConnectionStrings.EventuateTramDbConnection);
 		await using var dbContext = new EventuateTramDbContext(builder.Options, new EventuateSchema(DbSchemaName));
 		await ClearDbAsync(dbContext, DbSchemaName);
-		await CleanupKafkaTopics();
+		await CleanupKafkaTopicsAsync();
 	}
 
 	[TearDown]

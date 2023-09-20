@@ -17,7 +17,7 @@ public class BackpressureTests : IntegrationTestsBase
 	[SetUp]
 	public async Task Setup()
 	{
-		await CleanupKafkaTopics();
+		await CleanupKafkaTopicsAsync();
 		// Initialize the backpressure properties
 		var properties = new EventuateKafkaConsumerConfigurationProperties
 		{

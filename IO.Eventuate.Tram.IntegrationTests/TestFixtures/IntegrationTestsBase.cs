@@ -84,7 +84,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             GetTestMessageInterceptor()?.Reset();
         }
 
-        protected async Task CleanupKafkaTopics()
+        protected async Task CleanupKafkaTopicsAsync()
         {
             var config = new AdminClientConfig();
             config.BootstrapServers = TestSettings.KafkaBootstrapServers;
