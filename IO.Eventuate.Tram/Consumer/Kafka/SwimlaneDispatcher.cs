@@ -23,13 +23,13 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 		private bool _dispatcherStopped;
 		private CancellationTokenSource _cancellationTokenSource;
 		private Task _processQueuedMessagesTask;
-		private SwimlaneDispatcherBacklog _consumerStatus;
+		private readonly SwimlaneDispatcherBacklog _backlog;
 
 		public SwimlaneDispatcher(string subscriberId, int swimlane, ILogger<SwimlaneDispatcher> logger)
 		{
 			_logger = logger;
 			_dispatcherContext = $"SubscriberId='{subscriberId}', SwimLane='{swimlane}'";
-			_consumerStatus = new SwimlaneDispatcherBacklog(_queue);
+			_backlog = new SwimlaneDispatcherBacklog(_queue);
 		}
 
 		public SwimlaneDispatcherBacklog Dispatch(IMessage message, Func<IMessage, CancellationToken, Task> messageConsumer)
@@ -41,7 +41,7 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 				if (_dispatcherStopped)
 				{
 					_logger.LogDebug($"{logContext}: Ignoring message because dispatcher is stopped");
-					return _consumerStatus;
+					return _backlog;
 				}
 				
 				var queuedMessage = new QueuedMessage(message, messageConsumer);
@@ -59,7 +59,7 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 				}
 			}
 			_logger.LogDebug($"-{logContext}");
-			return _consumerStatus;
+			return _backlog;
 		}
 
 		private void StartMessageProcessor()
