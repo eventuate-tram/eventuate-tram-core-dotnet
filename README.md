@@ -31,20 +31,46 @@ services.AddEventuateTramSqlProducer(dbSchemaName, (provider, o) =>
 	});
 ```
 
-### Configuration Properties
-- Customize the maximum amount of time (ms) to poll for a new event (default 100):
-```c#
-PollTimeout = 500; // default: 100
-```
-- Customize the Backpressure behavior. Message consumption will be paused once the size of the unprocessed message
-- queue exceeds the PauseThreshold and resumed once it drops back below the ResumeThreshold.
-```c#
-BackPressure = new BackPressureConfig
-{
-    PauseThreshold = 100, // default: uint.MaxValue
-    ResumeThreshold = 10  // default: 0
-};
-```
+### Kafka Consumer Configuration Properties
+
+The Kafka consumer configuration can be modified using the `EventuateKafkaConsumerConfigurationProperties` object that
+is passed in when registering the services. To use the default configuration, you can use `EventuateKafkaConsumerConfigurationProperties.Empty()`.
+
+#### `PollTimeout`
+
+Controls the maximum amount of time in milliseconds that the Kafka client will wait for when polling Kafka 
+for a new message within the Kafka consume loop.
+
+*Type*: long  
+*Required*: No  
+*Default Value*: 100
+
+#### `BackPressure`
+
+Customizes the backpressure behavior. Message consumption will be paused once the size of the unprocessed message
+queue exceeds the PauseThreshold and resumed once it drops back below the ResumeThreshold.
+
+##### `BackPressure.PauseThreshold`
+
+*Type*: uint  
+*Required*: No  
+*Default Value*: uint.MaxValue
+
+##### `BackPressure.ResumeThreshold`
+
+*Type*: uint  
+*Required*: No  
+*Default Value*: 0
+
+#### `Properties`
+
+A dictionary of property names and values that can be used to override the default configuration of the 
+underlying Kafka client. Refer to https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md 
+for a list of possible property names.
+
+*Type*: IDictionary<string, string>  
+*Required*: No  
+*Default Value*: Empty
 
 ### Database Setup
 You need to run the [database initialization script](IO.Eventuate.Tram/Database/mssql/initialize-database.sql),
