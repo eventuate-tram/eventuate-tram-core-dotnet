@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
-    <VersionPrefix>0.3.0</VersionPrefix>
+    <VersionPrefix>0.4.0</VersionPrefix>
     <RepositoryUrl>https://github.com/eventuate-tram/eventuate-tram-core-dotnet</RepositoryUrl>
   </PropertyGroup>
 
