@@ -20,14 +20,15 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 	/// an event is received.
 	/// Disposing of the the consumer shuts down the subscription.
 	/// </summary>
-	public class EventuateKafkaConsumer : IDisposable
+	public class EventuateKafkaConsumer : IAsyncDisposable
 	{
-		private const int ConsumePollMilliseconds = 100;
 		private const int AdminClientTimeoutMilliseconds = 10;
 
 		private readonly string _subscriberId;
 		private readonly EventuateKafkaConsumerMessageHandler _handler;
 		private readonly IList<string> _topics;
+		private readonly BackPressureConfig _backPressureConfig;
+		private readonly long _pollTimeout;
 		private readonly ILoggerFactory _loggerFactory;
 
 		private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
@@ -36,7 +37,8 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 		private readonly ILogger _logger;
 
 		private volatile EventuateKafkaConsumerState _state = EventuateKafkaConsumerState.Created;
-		public EventuateKafkaConsumerState State => _state;
+
+		private Task _consumeTask;
 
 		public EventuateKafkaConsumer(string subscriberId,
 			EventuateKafkaConsumerMessageHandler handler,
@@ -48,6 +50,8 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 			_subscriberId = subscriberId;
 			_handler = handler;
 			_topics = topics;
+			_backPressureConfig = eventuateKafkaConsumerConfigurationProperties.BackPressure;
+			_pollTimeout = eventuateKafkaConsumerConfigurationProperties.PollTimeout;
 			_loggerFactory = loggerFactory;
 			_logger = loggerFactory.CreateLogger<EventuateKafkaConsumer>();
 
@@ -96,11 +100,13 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 		public void Start()
 		{
 			var logContext = $"{nameof(Start)} for SubscriberId={_subscriberId}";
+			IConsumer<string, string> consumer = null;
 			try
 			{
-				IConsumer<string, string> consumer = new ConsumerBuilder<string, string>(_consumerProperties).Build();
+				consumer = new ConsumerBuilder<string, string>(_consumerProperties).Build();
 				var processor = new KafkaMessageProcessor(_subscriberId, _handler,
 					_loggerFactory.CreateLogger<KafkaMessageProcessor>());
+				var backPressureManager = new BackPressureManager(_backPressureConfig);
 
 				using (IAdminClient adminClient = new DependentAdminClientBuilder(consumer.Handle).Build())
 				{
@@ -119,7 +125,8 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 				// (prevent setting it to it started after it has potentially already been set to stopped)
 				_state = EventuateKafkaConsumerState.Started;
 
-				Task.Run(() =>
+				// ReSharper disable AccessToDisposedClosure - consumer is disposed outside of the closure only if the closure doesn't execute
+				_consumeTask = Task.Run(async () =>
 				{
 					try
 					{
@@ -128,14 +135,13 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 							try
 							{
 								ConsumeResult<string, string> record =
-									consumer.Consume(TimeSpan.FromMilliseconds(ConsumePollMilliseconds));
+									consumer.Consume(TimeSpan.FromMilliseconds(_pollTimeout));
 
 								if (record != null)
 								{
-									_logger.LogDebug(
-										$"{logContext}: process record at offset='{record.Offset}', key='{record.Message.Key}', value='{record.Message.Value}'");
-
-									processor.Process(record);
+									_logger.LogDebug($"{logContext}: process record at offset='{record.Offset}', " +
+									                 $"key='{record.Message.Key}', value='{record.Message.Value}'");
+									await processor.ProcessAsync(record);
 								}
 								else
 								{
@@ -143,6 +149,27 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 								}
 
 								MaybeCommitOffsets(consumer, processor);
+
+								int backlog = processor.GetBacklog();
+								var topicPartitions = new HashSet<TopicPartition>();
+								if (record != null)
+								{
+									topicPartitions.Add(new TopicPartition(record.Topic, record.Partition));
+								}
+								BackPressureActions actions = backPressureManager.Update(topicPartitions, backlog);
+
+								if (actions.PartitionsToPause.Any())
+								{
+									_logger.LogInformation($"{logContext}: subscriber {_subscriberId} pausing " +
+										$"{string.Join(", ", actions.PartitionsToPause)} due to backlog {backlog} > {_backPressureConfig.PauseThreshold}");
+									consumer.Pause(actions.PartitionsToPause);
+								}
+								if (actions.PartitionsToResume.Any())
+								{
+									_logger.LogInformation($"{logContext}: subscriber {_subscriberId} resuming " +
+										$"{string.Join(", ", actions.PartitionsToResume)} due to backlog {backlog} <= {_backPressureConfig.ResumeThreshold}");
+									consumer.Resume(actions.PartitionsToResume);
+								}
 							}
 							catch (ConsumeException e)
 							{
@@ -159,8 +186,16 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 					}
 					catch (KafkaMessageProcessorFailedException e)
 					{
-						_logger.LogError($"{logContext}: Terminating due to KafkaMessageProcessorFailedException - {e}");
-						_state = EventuateKafkaConsumerState.MessageHandlingFailed;
+						if (e.InnerException is OperationCanceledException)
+						{
+							_logger.LogDebug($"{logContext}: Terminating due to OperationCanceledException during message handling - {e}");
+							_state = EventuateKafkaConsumerState.Stopped;
+						}
+						else
+						{
+							_logger.LogError($"{logContext}: Terminating due to KafkaMessageProcessorFailedException - {e}");
+							_state = EventuateKafkaConsumerState.MessageHandlingFailed;
+						}
 					}
 					catch (Exception e)
 					{
@@ -175,29 +210,46 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 						// that all the offsets are ready. Worst case is that there
 						// are messages processed more than once.
 						MaybeCommitOffsets(consumer, processor);
+						consumer.Close();
 						consumer.Dispose();
 						
 						_logger.LogDebug($"{logContext}: Stopped in state {_state.ToString()}");
 					}
 				}, _cancellationTokenSource.Token);
+				// ReSharper restore AccessToDisposedClosure
 			}
 			catch (Exception e)
 			{
 				_logger.LogError(e, $"{logContext}: Error subscribing");
 				_state = EventuateKafkaConsumerState.FailedToStart;
+				consumer?.Close();
+				consumer?.Dispose();
 				throw;
 			}
 		}
-
-		public void Dispose()
+		
+		// Following recommended standard implementation of DisposeAsync for unsealed classes
+		public async ValueTask DisposeAsync()
 		{
-			var logContext = $"{nameof(Dispose)} for SubscriberId={_subscriberId}";
+			await DisposeAsyncCore();
+			GC.SuppressFinalize(this);
+		}
+		
+		protected virtual async ValueTask DisposeAsyncCore()
+		{
+			var logContext = $"{nameof(DisposeAsyncCore)} for SubscriberId={_subscriberId}";
 			_logger.LogDebug($"+{logContext}");
 			if (!_cancellationTokenSource.IsCancellationRequested)
 			{
 				_logger.LogDebug($"+{logContext}: Sending cancel to consumer thread.");
 				_cancellationTokenSource.Cancel();
 			}
+
+			if (_consumeTask != null)
+			{
+				await _consumeTask;
+			}
+
 			_cancellationTokenSource.Dispose();
 			_logger.LogDebug($"-{logContext}");
 		}

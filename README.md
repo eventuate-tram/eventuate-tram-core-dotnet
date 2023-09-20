@@ -31,6 +31,47 @@ services.AddEventuateTramSqlProducer(dbSchemaName, (provider, o) =>
 	});
 ```
 
+### Kafka Consumer Configuration Properties
+
+The Kafka consumer configuration can be modified using the `EventuateKafkaConsumerConfigurationProperties` object that
+is passed in when registering the services. To use the default configuration, you can use `EventuateKafkaConsumerConfigurationProperties.Empty()`.
+
+#### `PollTimeout`
+
+Controls the maximum amount of time in milliseconds that the Kafka client will wait for when polling Kafka 
+for a new message within the Kafka consume loop.
+
+*Type*: long  
+*Required*: No  
+*Default Value*: 100
+
+#### `BackPressure`
+
+Customizes the backpressure behavior. Message consumption will be paused once the size of the unprocessed message
+queue exceeds the PauseThreshold and resumed once it drops back below the ResumeThreshold.
+
+##### `BackPressure.PauseThreshold`
+
+*Type*: uint  
+*Required*: No  
+*Default Value*: uint.MaxValue
+
+##### `BackPressure.ResumeThreshold`
+
+*Type*: uint  
+*Required*: No  
+*Default Value*: 0
+
+#### `Properties`
+
+A dictionary of property names and values that can be used to override the default configuration of the 
+underlying Kafka client. Refer to https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md 
+for a list of possible property names.
+
+*Type*: IDictionary<string, string>  
+*Required*: No  
+*Default Value*: Empty
+
 ### Database Setup
 You need to run the [database initialization script](IO.Eventuate.Tram/Database/mssql/initialize-database.sql),
 modifying the database schema $(TRAM_SCHEMA) variable to match what you configured. 
@@ -127,30 +168,30 @@ one handler service per event type, or handle multiple event types in the same h
 ```c#
 public class ExampleEventHandler : IDomainEventHandler<Example1Event>, IDomainEventHandler<Example2Event>
 {
-    private readonly ExampleDbContext _dbContext;
-    private readonly ILogger _logger;
+	private readonly ExampleDbContext _dbContext;
+	private readonly ILogger _logger;
 
-    public ExampleEventHandler(ExampleDbContext dbContext, ILogger<ExampleEventHandler> logger)
-    {
-        _dbContext = dbContext;
-        _logger = logger;
-    }
+	public ExampleEventHandler(ExampleDbContext dbContext, ILogger<ExampleEventHandler> logger)
+	{
+		_dbContext = dbContext;
+		_logger = logger;
+	}
     
-    public void Handle(IDomainEventEnvelope<Example1Event> @event)
-    {
-        _logger.LogDebug("Got message Example1Event with id={} and value={}", @event.EventId,
-            @event.Event.ToString());
-        _dbContext.DoSomething(...);
-        _dbContext.SaveChanges();
-    }
+	public async Task HandleAsync(IDomainEventEnvelope<Example1Event> @event, CancellationToken cancellationToken)
+	{
+		_logger.LogDebug("Got message Example1Event with id={EventId} and value={Event}", @event.EventId,
+			@event.Event.ToString());
+		_dbContext.DoSomething(...);
+		await _dbContext.SaveChangesAsync(cancellationToken);
+	}
 
-   public void Handle(IDomainEventEnvelope<Example2Event> @event)
-    {
-        _logger.LogDebug("Got message Example2Event with id={} and value={}", @event.EventId,
-            @event.Event.ToString());
-        _dbContext.DoSomething(...);
-        _dbContext.SaveChanges();
-    }
+	public async Task HandleAsync(IDomainEventEnvelope<Example2Event> @event, CancellationToken cancellationToken)
+	{
+		_logger.LogDebug("Got message Example2Event with id={EventId} and value={Event}", @event.EventId,
+			@event.Event.ToString());
+		_dbContext.DoSomething(...);
+		await _dbContext.SaveChangesAsync(cancellationToken);
+	}
 }
 ```
 
@@ -183,18 +224,18 @@ the DuplicateDetectingMessageHandlerDecorator:
 ```c#
 public class EventuateExecutionStrategyMessageHandlerDecorator : IMessageHandlerDecorator, IOrdered
 {
-    public Action<SubscriberIdAndMessage, IServiceProvider, IMessageHandlerDecoratorChain> Accept =>
-        (subscriberIdAndMessage, serviceProvider, chain) =>
-        {
-            var dbContext = serviceProvider.GetService<ApplicationDbContext>();
-            IExecutionStrategy executionStrategy = dbContext.Database.CreateExecutionStrategy();
-            executionStrategy.Execute(() =>
-            {
-                chain.InvokeNext(subscriberIdAndMessage, serviceProvider);
-            });
-        };
+	public Func<SubscriberIdAndMessage, IServiceProvider, IMessageHandlerDecoratorChain, CancellationToken, Task> Accept =>
+		async (subscriberIdAndMessage, serviceProvider, chain, cancellationToken) =>
+		{
+			var dbContext = serviceProvider.GetService<ApplicationDbContext>();
+			IExecutionStrategy executionStrategy = dbContext.Database.CreateExecutionStrategy();
+			await executionStrategy.ExecuteAsync(async () =>
+			{
+				await chain.InvokeNextAsync(subscriberIdAndMessage, serviceProvider, cancellationToken);
+			});
+		};
 
-    public int Order => BuiltInMessageHandlerDecoratorOrder.DuplicateDetectingMessageHandlerDecorator - 1;
+	public int Order => BuiltInMessageHandlerDecoratorOrder.DuplicateDetectingMessageHandlerDecorator - 1;
 }
 ```
 You will also need to register the EventuateExecutionStrategyMessageHandlerDecorator as a singleton:
@@ -211,32 +252,32 @@ Create an event consumer service and implement handlers for the different event 
 ```c#
 public class ExampleEventConsumer
 {
-    private readonly ILogger<ExampleEventConsumer> _logger;
+	private readonly ILogger<ExampleEventConsumer> _logger;
 
-    public ExampleEventConsumer(ILogger<ExampleEventConsumer> logger)
-    {
-        _logger = logger;
-    }
-    
-    public DomainEventHandlers DomainEventHandlers()
-    {
-        return DomainEventHandlersBuilder.ForAggregateType("ExampleAggregate")
-            .OnEvent<Example1Event>(HandleExample1Event)
-            .OnEvent<Example2Event>(HandleExample2Event)
-            .Build();
-    }
+	public ExampleEventConsumer(ILogger<ExampleEventConsumer> logger)
+	{
+		_logger = logger;
+	}
+	
+	public DomainEventHandlers DomainEventHandlers()
+	{
+		return DomainEventHandlersBuilder.ForAggregateType("ExampleAggregate")
+			.OnEvent<Example1Event>(HandleExample1EventAsync)
+			.OnEvent<Example2Event>(HandleExample2EventAsync)
+			.Build();
+	}
 
-    private void HandleExample1Event(IDomainEventEnvelope<Example1Event> @event)
-    {
-        _logger.LogDebug("Got Example1Event with id={} and value={}", @event.EventId,
-            @event.Event.ToString());
-    }
-
-    private void HandleExample2Event(IDomainEventEnvelope<Example2Event> @event)
-    {
-        _logger.LogDebug("Got message Example2Event with id={} and value={}", @event.EventId,
-            @event.Event.ToString());
-    }
+	private async Task HandleExample1EventAsync(IDomainEventEnvelope<Example1Event> @event)
+	{
+		_logger.LogDebug("Got Example1Event with id={EventId} and value={Event}", @event.EventId,
+			@event.Event.ToString());
+	}
+	
+	private async Task HandleExample2EventAsync(IDomainEventEnvelope<Example2Event> @event)
+	{
+		_logger.LogDebug("Got Example2Event with id={EventId} and value={Event}", @event.EventId,
+			@event.Event.ToString());
+	}
 }
 ```
 The aggregate type will be used as the Kafka topic.
@@ -273,7 +314,7 @@ $ export CDC_SERVICE_DOCKER_VERSION=<CDC docker tag>
 $ ./test.sh
 ```
 
-Test results will be written to ./bin/Release/netcoreapp3.1/TestResults.
+Test results will be written to ./bin/Release/net6.0/TestResults.
 
 ### Environment Variable Configuration
 

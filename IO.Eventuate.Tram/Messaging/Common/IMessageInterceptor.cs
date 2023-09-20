@@ -6,6 +6,7 @@
  */
 
 using System;
+using System.Threading.Tasks;
 
 namespace IO.Eventuate.Tram.Messaging.Common
 {
@@ -13,14 +14,18 @@ namespace IO.Eventuate.Tram.Messaging.Common
 	{
 		void PreSend(IMessage message);
 
+		Task PreSendAsync(IMessage message);
+		
 		void PostSend(IMessage message, Exception e);
 
-		void PreReceive(IMessage message);
+		Task PostSendAsync(IMessage message, Exception e);
 
-		void PreHandle(string subscriberId, IMessage message);
+		Task PreReceiveAsync(IMessage message);
 
-		void PostHandle(string subscriberId, IMessage message, Exception e);
+		Task PreHandleAsync(string subscriberId, IMessage message);
 
-		void PostReceive(IMessage message);
+		Task PostHandleAsync(string subscriberId, IMessage message, Exception e);
+
+		Task PostReceiveAsync(IMessage message);
 	}
 }

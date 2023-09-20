@@ -6,6 +6,8 @@
  */
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using IO.Eventuate.Tram.Events.Common;
 using IO.Eventuate.Tram.Messaging.Common;
 using IO.Eventuate.Tram.Messaging.Consumer;
@@ -18,32 +20,53 @@ namespace IO.Eventuate.Tram.Events.Subscriber
 		private readonly ILogger _logger;
 		private readonly string _dispatcherContext;
 		private readonly string _subscriberId;
-		private readonly DomainEventHandlers _domainEventHandlers;
+		private readonly Func<Task<DomainEventHandlers>> _domainEventHandlersFactory;
+		private DomainEventHandlers _domainEventHandlers;
 		private readonly IMessageConsumer _messageConsumer;
 		private readonly IEventTypeNamingStrategy _eventTypeNamingStrategy;
+
+		private IMessageSubscription _subscription;
 
 		public DomainEventDispatcher(string subscriberId, DomainEventHandlers domainEventHandlers,
 			IMessageConsumer messageConsumer, IEventTypeNamingStrategy eventTypeNamingStrategy,
 			ILogger<DomainEventDispatcher> logger)
+			: this(subscriberId, () => Task.FromResult(domainEventHandlers), messageConsumer,
+				eventTypeNamingStrategy, logger)
+		{
+		}
+
+		public DomainEventDispatcher(string subscriberId, Func<Task<DomainEventHandlers>> domainEventHandlersFactory,
+			IMessageConsumer messageConsumer, IEventTypeNamingStrategy eventTypeNamingStrategy,
+			ILogger<DomainEventDispatcher> logger)
 		{
 			_subscriberId = subscriberId;
-			_domainEventHandlers = domainEventHandlers;
+			_domainEventHandlersFactory = domainEventHandlersFactory;
 			_messageConsumer = messageConsumer;
 			_eventTypeNamingStrategy = eventTypeNamingStrategy;
 			_logger = logger;
-			_dispatcherContext = $"SubscriberId='{subscriberId}', " +
-			                     $"DomainEventHandlers for'{String.Join(",", domainEventHandlers.GetAggregateTypes())}'";
+			_dispatcherContext = $"SubscriberId='{subscriberId}'";
 		}
 
-		public void Initialize()
+		public async Task InitializeAsync()
 		{
-			_messageConsumer.Subscribe(_subscriberId, _domainEventHandlers.GetAggregateTypes(),
-				MessageHandler);
+			_domainEventHandlers = await _domainEventHandlersFactory();
+			_subscription = _messageConsumer.Subscribe(_subscriberId, _domainEventHandlers.GetAggregateTypes(),
+				MessageHandlerAsync);
 		}
 
-		public void MessageHandler(IMessage message, IServiceProvider serviceProvider)
+		public async Task StopAsync()
 		{
-			var logContext = $"{nameof(MessageHandler)} on {_dispatcherContext}, MessageId={message.Id}";
+			if (_subscription == null)
+			{
+				return;
+			}
+			
+			await _subscription.UnsubscribeAsync();
+		}
+
+		public async Task MessageHandlerAsync(IMessage message, IServiceProvider serviceProvider, CancellationToken cancellationToken)
+		{
+			var logContext = $"{nameof(MessageHandlerAsync)} on {_dispatcherContext}, MessageId={message.Id}";
 			_logger.LogDebug($"+{logContext}");
 			string aggregateType = message.GetRequiredHeader(EventMessageHeaders.AggregateType);
 
@@ -65,7 +88,7 @@ namespace IO.Eventuate.Tram.Events.Subscriber
 				message.GetRequiredHeader(MessageHeaders.Id),
 				param);
 
-			handler.Invoke(envelope, serviceProvider);
+			await handler.InvokeAsync(envelope, serviceProvider, cancellationToken);
 			_logger.LogDebug($"-{logContext}: Processed message of type='{aggregateType}'");
 		}
 	}

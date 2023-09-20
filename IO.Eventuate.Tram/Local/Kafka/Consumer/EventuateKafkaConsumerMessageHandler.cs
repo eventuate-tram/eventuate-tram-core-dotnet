@@ -6,10 +6,11 @@
  */
 
 using System;
+using System.Threading.Tasks;
 using Confluent.Kafka;
 
 namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 {
-	public delegate void EventuateKafkaConsumerMessageHandler(ConsumeResult<string, string> consumeResult,
+	public delegate Task<IMessageConsumerBacklog> EventuateKafkaConsumerMessageHandler(ConsumeResult<string, string> consumeResult,
 		Action<Exception> callback);
 }

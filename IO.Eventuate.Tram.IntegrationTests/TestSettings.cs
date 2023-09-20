@@ -1,11 +1,11 @@
-﻿namespace IO.Eventuate.Tram.IntegrationTests
+namespace IO.Eventuate.Tram.IntegrationTests
 {
 	/// <summary>
 	/// Test configuration settings
 	/// </summary>
 	public class TestSettings
 	{
-	    public string KafkaBootstrapServers { get; set; } = "kafka:9092";
+	    public string KafkaBootstrapServers { get; set; }
         /// <summary>
         /// Database connection strings
         /// </summary>
@@ -20,7 +20,6 @@
 	    /// <summary>
 	    /// Eventuate Tram database connection string
 	    /// </summary>
-	    public string EventuateTramDbConnection { get; set; } = "Server=mssql,1433;Database=TramDb;User Id=sa;Password=TestPa$$word";
-
+	    public string EventuateTramDbConnection { get; set; }
 	}
 }

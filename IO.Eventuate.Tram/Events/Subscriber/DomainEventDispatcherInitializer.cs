@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
@@ -18,19 +19,20 @@ namespace IO.Eventuate.Tram.Events.Subscriber
 			_domainEventDispatchers = domainEventDispatchers;
 		}
 		
-		public Task StartAsync(CancellationToken cancellationToken)
+		public async Task StartAsync(CancellationToken cancellationToken)
 		{
 			foreach (DomainEventDispatcher domainEventDispatcher in _domainEventDispatchers)
 			{
-				domainEventDispatcher.Initialize();
+				await domainEventDispatcher.InitializeAsync();
 			}
-
-			return Task.CompletedTask;
 		}
 
-		public Task StopAsync(CancellationToken cancellationToken)
+		public async Task StopAsync(CancellationToken cancellationToken)
 		{
-			return Task.CompletedTask;
+			foreach (DomainEventDispatcher domainEventDispatcher in _domainEventDispatchers)
+			{
+				await domainEventDispatcher.StopAsync();
+			}
 		}
 	}
 }

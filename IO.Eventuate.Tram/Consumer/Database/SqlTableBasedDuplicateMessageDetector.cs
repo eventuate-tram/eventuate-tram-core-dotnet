@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 using System.Transactions;
 using IO.Eventuate.Tram.Consumer.Common;
@@ -20,19 +21,19 @@ namespace IO.Eventuate.Tram.Consumer.Database
 			_logger = logger;
 		}
 
-		public bool IsDuplicate(string consumerId, string messageId)
+		public async Task<bool> IsDuplicateAsync(string consumerId, string messageId)
 		{
-			string logContext = $"{nameof(IsDuplicate)} " +
+			string logContext = $"{nameof(IsDuplicateAsync)} " +
 			                    $"for {nameof(consumerId)}='{consumerId}', {nameof(messageId)}='{messageId}'";
 			try
 			{
 				_logger.LogDebug($"+{logContext}");
-				using (EventuateTramDbContext dbContext = _dbContextProvider.CreateDbContext())
+				await using (EventuateTramDbContext dbContext = _dbContextProvider.CreateDbContext())
 				{
 					// Relies on database column default value to set creation_time
 					dbContext.ReceivedMessages.Add(new ReceivedMessage
 						{ConsumerId = consumerId, MessageId = messageId});
-					dbContext.SaveChanges();
+					await dbContext.SaveChangesAsync();
 				}
 
 				_logger.LogDebug($"-{logContext}");
@@ -54,18 +55,18 @@ namespace IO.Eventuate.Tram.Consumer.Database
 			}
 		}
 
-		public void DoWithMessage(SubscriberIdAndMessage subscriberIdAndMessage, Action callback)
+		public async Task DoWithMessageAsync(SubscriberIdAndMessage subscriberIdAndMessage, Func<Task> callback)
 		{
-			string logContext = $"{nameof(DoWithMessage)} " +
+			string logContext = $"{nameof(DoWithMessageAsync)} " +
 			                    $"for {nameof(SubscriberIdAndMessage.SubscriberId)}='{subscriberIdAndMessage.SubscriberId}', " +
 			                    $"MessageId='{subscriberIdAndMessage.Message.Id}'";
 
 			using (var transactionScope = new TransactionScope(TransactionScopeOption.Required,
-				new TransactionOptions {IsolationLevel = IsolationLevel.ReadCommitted}))
+				new TransactionOptions {IsolationLevel = IsolationLevel.ReadCommitted}, TransactionScopeAsyncFlowOption.Enabled))
 			{
 				try
 				{
-					if (IsDuplicate(subscriberIdAndMessage.SubscriberId,
+					if (await IsDuplicateAsync(subscriberIdAndMessage.SubscriberId,
 						subscriberIdAndMessage.Message.Id))
 					{
 						_logger.LogDebug($"{logContext}: message is a duplicate");
@@ -73,7 +74,7 @@ namespace IO.Eventuate.Tram.Consumer.Database
 					else
 					{
 						_logger.LogDebug($"{logContext}: Invoking handlers");
-						callback();
+						await callback();
 					}
 
 					transactionScope.Complete();

@@ -1,9 +1,11 @@
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace IO.Eventuate.Tram.Consumer.Common
 {
 	public interface IMessageHandlerDecoratorChain
 	{
-		void InvokeNext(SubscriberIdAndMessage subscriberIdAndMessage, IServiceProvider serviceProvider);
+		Task InvokeNextAsync(SubscriberIdAndMessage subscriberIdAndMessage, IServiceProvider serviceProvider, CancellationToken cancellationToken);
 	}
 }

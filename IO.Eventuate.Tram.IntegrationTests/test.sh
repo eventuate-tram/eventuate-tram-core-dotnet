@@ -9,6 +9,7 @@ docker-compose up -d mssql
 # Wait for MSSQL to start up
 sleep 40s
 
+docker-compose run --rm kafka-setup
 docker-compose run --rm dbsetup
 docker-compose up -d zookeeper
 docker-compose up -d kafka

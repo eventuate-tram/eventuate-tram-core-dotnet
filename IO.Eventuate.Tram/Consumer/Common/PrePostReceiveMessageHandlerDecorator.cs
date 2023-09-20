@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using IO.Eventuate.Tram.Messaging.Common;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -8,37 +10,37 @@ namespace IO.Eventuate.Tram.Consumer.Common
 {
 	public class PrePostReceiveMessageHandlerDecorator : IMessageHandlerDecorator, IOrdered
 	{
-		public Action<SubscriberIdAndMessage, IServiceProvider, IMessageHandlerDecoratorChain> Accept =>
-			(subscriberIdAndMessage, serviceProvider, messageHandlerDecoratorChain) =>
+		public Func<SubscriberIdAndMessage, IServiceProvider, IMessageHandlerDecoratorChain, CancellationToken, Task> Accept =>
+			async (subscriberIdAndMessage, serviceProvider, messageHandlerDecoratorChain, cancellationToken) =>
 			{
 				IMessage message = subscriberIdAndMessage.Message;
 				IMessageInterceptor[] messageInterceptors =
 					serviceProvider.GetServices<IMessageInterceptor>().ToArray();
-				PreReceive(message, messageInterceptors);
+				await PreReceiveAsync(message, messageInterceptors);
 				try
 				{
-					messageHandlerDecoratorChain.InvokeNext(subscriberIdAndMessage, serviceProvider);
+					await messageHandlerDecoratorChain.InvokeNextAsync(subscriberIdAndMessage, serviceProvider, cancellationToken);
 				}
 				finally
 				{
-					PostReceive(message, messageInterceptors);
+					await PostReceiveAsync(message, messageInterceptors);
 				}
 			};
 
-		private void PreReceive(IMessage message, IEnumerable<IMessageInterceptor> messageInterceptors)
+		private async Task PreReceiveAsync(IMessage message, IEnumerable<IMessageInterceptor> messageInterceptors)
 		{
 			foreach (IMessageInterceptor messageInterceptor in messageInterceptors)
 			{
-				messageInterceptor.PreReceive(message);
+				await messageInterceptor.PreReceiveAsync(message);
 			}
 		}
 
 
-		private void PostReceive(IMessage message, IEnumerable<IMessageInterceptor> messageInterceptors)
+		private async Task PostReceiveAsync(IMessage message, IEnumerable<IMessageInterceptor> messageInterceptors)
 		{
 			foreach (IMessageInterceptor messageInterceptor in messageInterceptors)
 			{
-				messageInterceptor.PostReceive(message);
+				await messageInterceptor.PostReceiveAsync(message);
 			}
 		}
 

@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Concurrent;
+using System.Threading;
+using System.Threading.Tasks;
 using IO.Eventuate.Tram.Messaging.Common;
 using Microsoft.Extensions.Logging;
 
@@ -7,7 +9,9 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 {
 	public class SwimlaneBasedDispatcher
 	{
-		private readonly ConcurrentDictionary<int, SwimlaneDispatcher> _map = new ConcurrentDictionary<int, SwimlaneDispatcher>();
+		private bool _dispatcherStopped;
+
+		private readonly ConcurrentDictionary<int, SwimlaneDispatcher> _swimlaneDispatchersBySwimlane = new();
 		private readonly string _subscriberId;
 		private readonly ILoggerFactory _loggerFactory;
 		private readonly ILogger _logger;
@@ -21,15 +25,16 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 			_dispatcherContext = $"SubscriberId='{subscriberId}'";
 		}
 
-		public void Dispatch(IMessage message, int swimlane, Action<IMessage> target)
+		public async Task<SwimlaneDispatcherBacklog> DispatchAsync(IMessage message, int swimlane, Func<IMessage, CancellationToken, Task> target)
 		{
-			var logContext = $"{nameof(Dispatch)} for {_dispatcherContext}, swimlane={swimlane}, MessageId={message.Id}";
+			var logContext = $"{nameof(DispatchAsync)} for {_dispatcherContext}, swimlane='{swimlane}', MessageId={message.Id}";
 			_logger.LogDebug($"+{logContext}");
-			if (!_map.TryGetValue(swimlane, out SwimlaneDispatcher swimlaneDispatcher))
+			if (!_swimlaneDispatchersBySwimlane.TryGetValue(swimlane, out SwimlaneDispatcher swimlaneDispatcher))
 			{
 				_logger.LogDebug($"{logContext}: No dispatcher found, attempting to create");
 				swimlaneDispatcher = new SwimlaneDispatcher(_subscriberId, swimlane, _loggerFactory.CreateLogger<SwimlaneDispatcher>());
-				SwimlaneDispatcher r = _map.GetOrAdd(swimlane, swimlaneDispatcher);
+
+				SwimlaneDispatcher r = _swimlaneDispatchersBySwimlane.GetOrAdd(swimlane, swimlaneDispatcher);
 				if (r != swimlaneDispatcher)
 				{
 					_logger.LogDebug($"{logContext}: Using concurrently created SwimlaneDispatcher");
@@ -38,10 +43,35 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 				else
 				{
 					_logger.LogDebug($"{logContext}: Using newly created SwimlaneDispatcher");
+
+					// If the dispatcher is stopped, make sure we stop the new swim lane dispatcher
+					if (_dispatcherStopped)
+					{
+						_logger.LogDebug($"{logContext}: Stopping newly created SwimlaneDispatcher");
+						await r.StopAsync();
+					}
 				}
 			}
 
-			swimlaneDispatcher.Dispatch(message, target);
+			SwimlaneDispatcherBacklog backlog = swimlaneDispatcher.Dispatch(message, target);
+			_logger.LogDebug($"-{logContext}");
+
+			return backlog;
+		}
+
+		/// <summary>
+		/// Stop the dispatcher from processing any further messages
+		/// </summary>
+		public async Task StopAsync()
+		{
+			var logContext = $"{nameof(StopAsync)} for {_dispatcherContext}";
+			_logger.LogDebug($"+{logContext}");
+			_dispatcherStopped = true;
+			foreach (SwimlaneDispatcher dispatcher in _swimlaneDispatchersBySwimlane.Values)
+			{
+				await dispatcher.StopAsync();
+			}
+
 			_logger.LogDebug($"-{logContext}");
 		}
 	}

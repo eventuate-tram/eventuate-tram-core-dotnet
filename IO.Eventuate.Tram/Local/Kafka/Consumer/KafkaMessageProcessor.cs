@@ -7,6 +7,8 @@
 
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Confluent.Kafka;
 using Microsoft.Extensions.Logging;
 
@@ -29,7 +31,9 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 			new ConcurrentQueue<ConsumeResult<string, string>>();
 
 		private volatile KafkaMessageProcessorFailedException _failed;
-		
+
+		private readonly HashSet<IMessageConsumerBacklog> _consumerBacklogs = new();
+
 		public KafkaMessageProcessor(string subscriberId,
 			EventuateKafkaConsumerMessageHandler handler,
 			ILogger<KafkaMessageProcessor> logger)
@@ -40,15 +44,15 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 			_offsetTracker = new OffsetTracker(_logger);
 		}
 
-		public void Process(ConsumeResult<string, string> record)
+		public async Task ProcessAsync(ConsumeResult<string, string> record)
 		{
-			var logContext = $"{nameof(Process)} for {_loggingObjectContext}, " +
+			var logContext = $"{nameof(ProcessAsync)} for {_loggingObjectContext}, " +
 			                 $"record.Key='{record.Message.Key}', record.Topic='{record.Topic}'";
 			_logger.LogDebug($"+{logContext}");
 			ThrowExceptionIfHandlerFailed();
 			
 			_offsetTracker.NoteUnprocessed(new TopicPartition(record.Topic, record.Partition), record.Offset);
-			_handler(record, e =>
+			IMessageConsumerBacklog consumerBacklog = await _handler(record, e =>
 			{
 				if (e != null)
 				{
@@ -61,6 +65,12 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 					_processedRecords.Enqueue(record);
 				}
 			});
+
+			if (consumerBacklog != null)
+			{
+				_consumerBacklogs.Add(consumerBacklog);
+			}
+			
 			_logger.LogDebug($"-{logContext}");
 		}
 
@@ -107,6 +117,11 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 			var logContext = $"{nameof(GetPending)} for {_loggingObjectContext}";
 			_logger.LogDebug($"{logContext}");
 			return _offsetTracker;
+		}
+
+		public int GetBacklog()
+		{
+			return _consumerBacklogs.Sum(cb => cb.Size());
 		}
 	}
 }

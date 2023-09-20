@@ -7,6 +7,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Confluent.Kafka;
 using IO.Eventuate.Tram.Consumer.Common;
 using IO.Eventuate.Tram.Local.Kafka.Consumer;
@@ -17,7 +20,7 @@ using Microsoft.Extensions.Logging;
 
 namespace IO.Eventuate.Tram.Consumer.Kafka
 {
-	public class KafkaMessageConsumer : IMessageConsumer, IDisposable
+	public class KafkaMessageConsumer : IMessageConsumer, IAsyncDisposable
 	{
 		private readonly ILogger _logger;
 		private readonly EventuateKafkaConsumerConfigurationProperties _eventuateKafkaConsumerConfigurationProperties;
@@ -27,7 +30,9 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 
 		private readonly string _id = Guid.NewGuid().ToString();
 		private readonly string _bootstrapServers;
-		private readonly List<EventuateKafkaConsumer> _consumers = new List<EventuateKafkaConsumer>();
+		private readonly List<EventuateKafkaConsumer> _consumers = new();
+		private readonly List<SwimlaneBasedDispatcher> _dispatchers = new();
+		private readonly object _lockObject = new();
 
 		public KafkaMessageConsumer(string bootstrapServers,
 			EventuateKafkaConsumerConfigurationProperties eventuateKafkaConsumerConfigurationProperties,
@@ -42,20 +47,20 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 			_logger = _loggerFactory.CreateLogger<KafkaMessageConsumer>();
 		}
 
-		public IMessageSubscription Subscribe(string subscriberId, ISet<string> channels, MessageHandler handler)
+		public IMessageSubscription Subscribe(string subscriberId, ISet<string> channels, MessageHandlerAsync handler)
 		{
 			var logContext = $"{nameof(Subscribe)} for subscriberId='{subscriberId}', " +
 			                 $"channels='{String.Join(",", channels)}', " +
 			                 $"handler='{handler.Method.Name}'";
 			_logger.LogDebug($"+{logContext}");
 			
-			Action<SubscriberIdAndMessage, IServiceProvider> decoratedHandler = _decoratedMessageHandlerFactory.Decorate(handler);
+			Func<SubscriberIdAndMessage, IServiceProvider, CancellationToken, Task> decoratedHandler = _decoratedMessageHandlerFactory.Decorate(handler);
 			
 			var swimLaneBasedDispatcher = new SwimlaneBasedDispatcher(subscriberId, _loggerFactory);
 
 			EventuateKafkaConsumerMessageHandler kcHandler =
-				(record, completionCallback) => swimLaneBasedDispatcher.Dispatch(ToMessage(record), record.Partition,
-					message => Handle(message, completionCallback, subscriberId, decoratedHandler));
+				async (record, completionCallback) => await swimLaneBasedDispatcher.DispatchAsync(ToMessage(record), record.Partition,
+					(message, cancellationToken) => HandleAsync(message, completionCallback, subscriberId, decoratedHandler, cancellationToken));
 			
 			var kc = new EventuateKafkaConsumer(subscriberId,
 				kcHandler,
@@ -64,30 +69,37 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 				_eventuateKafkaConsumerConfigurationProperties,
 				_loggerFactory);
 
-			_consumers.Add(kc);
+			lock (_lockObject)
+			{
+				_consumers.Add(kc);
+				_dispatchers.Add(swimLaneBasedDispatcher);
+			}
 
 			kc.Start();
 			
 			_logger.LogDebug($"-{logContext}");
-			return new MessageSubscription(() =>
+			return new MessageSubscription(async () =>
 			{
-				kc.Dispose();
-				_consumers.Remove(kc);
+				await swimLaneBasedDispatcher.StopAsync();
+				await kc.DisposeAsync();
+				lock (_lockObject)
+				{
+					_dispatchers.Remove(swimLaneBasedDispatcher);
+					_consumers.Remove(kc);
+				}
 			});
 		}
 
-		public void Handle(IMessage message, Action<Exception> completionCallback, string subscriberId,
-			Action<SubscriberIdAndMessage, IServiceProvider> decoratedHandler)
+		private async Task HandleAsync(IMessage message, Action<Exception> completionCallback, string subscriberId,
+			Func<SubscriberIdAndMessage, IServiceProvider, CancellationToken, Task> decoratedHandler, CancellationToken cancellationToken)
 		{
 			try
 			{
 				// Creating a service scope and passing the scope's service provider to handlers
 				// so they can resolve scoped services
-				using (IServiceScope scope = _serviceScopeFactory.CreateScope())
-				{
-					decoratedHandler(new SubscriberIdAndMessage(subscriberId, message), scope.ServiceProvider);
-					completionCallback(null);
-				}
+				using IServiceScope scope = _serviceScopeFactory.CreateScope();
+				await decoratedHandler(new SubscriberIdAndMessage(subscriberId, message), scope.ServiceProvider, cancellationToken);
+				completionCallback(null);
 			}
 			catch (Exception e)
 			{
@@ -101,31 +113,47 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 			return _id;
 		}
 
-		public void Close()
+		public async Task CloseAsync()
 		{
-			_logger.LogDebug($"+{nameof(Close)}");
-			foreach (EventuateKafkaConsumer consumer in _consumers)
+			_logger.LogDebug($"+{nameof(CloseAsync)}");
+
+			List<SwimlaneBasedDispatcher> dispatchers;
+			List<EventuateKafkaConsumer> consumers;
+			lock (_lockObject)
 			{
-				consumer.Dispose();
+				dispatchers = _dispatchers.ToList();
+				_dispatchers.Clear();
+				consumers = _consumers.ToList();
+				_consumers.Clear();
 			}
-			_consumers.Clear();
-			_logger.LogDebug($"-{nameof(Close)}");
+
+			foreach (SwimlaneBasedDispatcher dispatcher in dispatchers)
+			{
+				await dispatcher.StopAsync();
+			}
+
+			foreach (EventuateKafkaConsumer consumer in consumers)
+			{
+				await consumer.DisposeAsync();
+			}
+			
+			_logger.LogDebug($"-{nameof(CloseAsync)}");
 		}
 
 		/// <inheritdoc />
 		private class MessageSubscription : IMessageSubscription
 		{
-			private readonly Action _unsubscribe;
+			private readonly Func<Task> _unsubscribe;
 
-			public MessageSubscription(Action unsubscribe)
+			public MessageSubscription(Func<Task> unsubscribe)
 			{
 				_unsubscribe = unsubscribe;
 			}
 
 			/// <inheritdoc />
-			public void Unsubscribe()
+			public async Task UnsubscribeAsync()
 			{
-				_unsubscribe();
+				await _unsubscribe();
 			}
 		}
 		
@@ -134,11 +162,18 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 			return JsonMapper.FromJson<Message>(record.Message.Value);
 		}
 
-		public void Dispose()
+		// Following recommended standard implementation of DisposeAsync for unsealed classes
+		public async ValueTask DisposeAsync()
 		{
-			_logger.LogDebug($"+{nameof(Dispose)}");
-			Close();
-			_logger.LogDebug($"-{nameof(Dispose)}");
+			await DisposeAsyncCore();
+			GC.SuppressFinalize(this);
+		}
+		
+		protected virtual async ValueTask DisposeAsyncCore()
+		{
+			_logger.LogDebug($"+{nameof(DisposeAsyncCore)}");
+			await CloseAsync();
+			_logger.LogDebug($"-{nameof(DisposeAsyncCore)}");
 		}
 	}
 }

@@ -11,7 +11,11 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 {
 	public class EventuateKafkaConsumerConfigurationProperties
 	{
-		public IDictionary<string, string> Properties { get; set; } = new Dictionary<string, string>();
+		public long PollTimeout { get; set; } = 100;
+
+		public BackPressureConfig BackPressure { get; set; } = new();
+		
+		public IDictionary<string, string> Properties { get; } = new Dictionary<string, string>();
 
 		public static EventuateKafkaConsumerConfigurationProperties Empty()
 		{

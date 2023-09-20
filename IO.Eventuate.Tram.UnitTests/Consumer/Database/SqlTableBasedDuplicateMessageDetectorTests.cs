@@ -2,6 +2,7 @@
 using System.Data;
 using Microsoft.Data.SqlClient;
 using System.Reflection;
+using System.Threading.Tasks;
 using IO.Eventuate.Tram.Consumer.Database;
 using IO.Eventuate.Tram.Database;
 using Microsoft.EntityFrameworkCore;
@@ -14,30 +15,24 @@ namespace IO.Eventuate.Tram.UnitTests.Consumer.Database
 {
 	public class SqlTableBasedDuplicateMessageDetectorTests
 	{
-		private SqlTableBasedDuplicateMessageDetector _detector;
-		private EventuateTramDbContext _dbContext;
-
-		[SetUp]
-		public void SetupDetector()
-		{
-			var dbContextProvider = Substitute.For<IEventuateTramDbContextProvider>();
-			_dbContext = Substitute.For<EventuateTramDbContext>();
-			dbContextProvider.CreateDbContext().Returns(_dbContext);
-			var logger = Substitute.For<ILogger<SqlTableBasedDuplicateMessageDetector>>();
-			_detector = new SqlTableBasedDuplicateMessageDetector(dbContextProvider, logger);
-		}
-
 		[Test]
-		public void IsDuplicate_ReceiveMessageCollision_ReturnsTrue()
+		public async Task IsDuplicate_ReceiveMessageCollision_ReturnsTrue()
 		{
 			// Arrange
+			var context = Substitute.For<EventuateTramDbContext>();
+			context.ReceivedMessages = Substitute.For<DbSet<ReceivedMessage>>();
+			var logger = Substitute.For<ILogger<SqlTableBasedDuplicateMessageDetector>>();
+			var dbContextProvider = Substitute.For<IEventuateTramDbContextProvider>();
+			dbContextProvider.CreateDbContext().Returns(context);
+			var detector = new SqlTableBasedDuplicateMessageDetector(dbContextProvider, logger);
+
 			const int duplicateKeyError = 2627;
 			var sqlException = CreateSqlException(duplicateKeyError, "Already there");
-			_dbContext.SaveChanges().Throws(new DbUpdateException("Duplicate",
+			context.SaveChangesAsync().Throws(new DbUpdateException("Duplicate",
 				sqlException));
 
 			// Act
-			bool isDuplicate = _detector.IsDuplicate("consumer", "message");
+			bool isDuplicate = await detector.IsDuplicateAsync("consumer", "message");
 
 			// Assert
 			Assert.That(isDuplicate, Is.True, "IsDuplicate response");

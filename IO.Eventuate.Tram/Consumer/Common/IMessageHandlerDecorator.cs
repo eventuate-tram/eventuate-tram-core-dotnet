@@ -1,9 +1,11 @@
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace IO.Eventuate.Tram.Consumer.Common
 {
 	public interface IMessageHandlerDecorator
 	{
-		Action<SubscriberIdAndMessage, IServiceProvider, IMessageHandlerDecoratorChain> Accept { get; }
+		Func<SubscriberIdAndMessage, IServiceProvider, IMessageHandlerDecoratorChain, CancellationToken, Task> Accept { get; }
 	}
 }

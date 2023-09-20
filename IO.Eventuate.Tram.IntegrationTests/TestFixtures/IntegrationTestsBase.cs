@@ -1,15 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Confluent.Kafka;
-using Confluent.Kafka.Admin;
 using IO.Eventuate.Tram.Database;
 using IO.Eventuate.Tram.Events.Publisher;
 using IO.Eventuate.Tram.IntegrationTests.TestHelpers;
 using IO.Eventuate.Tram.Local.Kafka.Consumer;
 using IO.Eventuate.Tram.Messaging.Common;
-using IO.Eventuate.Tram.Messaging.Consumer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,11 +23,16 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
         private string _subscriberId = "xx";
         protected const string AggregateType12 = "TestMessage12Topic";
         protected const string AggregateType34 = "TestMessage34Topic";
+        protected const string AggregateTypeDelay = "TestMessageDelayTopic";
+        protected const string TestPartitionAssignmentTopic1 = "TestPartitionAssignmentTopic1";
+        protected const string TestPartitionAssignmentTopic2 = "TestPartitionAssignmentTopic2";
         protected string EventuateDatabaseSchemaName = "eventuate";
+        public static string PingFileName = "ping.txt";
 
         protected TestSettings TestSettings;
 
         private static IHost _host;
+        private static IServiceScope _testServiceScope;
         private static EventuateTramDbContext _dbContext;
         private static IDomainEventPublisher _domainEventPublisher;
         private static TestEventConsumer _testEventConsumer;
@@ -57,45 +61,46 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
         {
             EventuateDatabaseSchemaName = schema;
             _subscriberId = Guid.NewGuid().ToString();
+            
+            // Clear the ping file
+            File.WriteAllText(PingFileName, string.Empty);
 
             if (_host == null)
             {
                 _host = SetupTestHost(withInterceptor, consumerConfigProperties);
-                _dbContext = _host.Services.GetService<EventuateTramDbContext>();
-                _domainEventPublisher = _host.Services.GetService<IDomainEventPublisher>();
-                _testEventConsumer = _host.Services.GetService<TestEventConsumer>();
-                _interceptor = (TestMessageInterceptor)_host.Services.GetService<IMessageInterceptor>();
+                var scopeFactory = _host.Services.GetRequiredService<IServiceScopeFactory>();
+                _testServiceScope = scopeFactory.CreateScope();
+                _dbContext = _testServiceScope.ServiceProvider.GetRequiredService<EventuateTramDbContext>();
+                _domainEventPublisher = _testServiceScope.ServiceProvider.GetRequiredService<IDomainEventPublisher>();
+                _testEventConsumer = _testServiceScope.ServiceProvider.GetRequiredService<TestEventConsumer>();
+                _interceptor = (TestMessageInterceptor)_testServiceScope.ServiceProvider.GetService<IMessageInterceptor>();
             }
         }
 
-        protected void CleanupTest()
+        protected async Task CleanupTestAsync()
         {
-            ClearDb(GetDbContext(), EventuateDatabaseSchemaName);
+            await ClearDbAsync(GetDbContext(), EventuateDatabaseSchemaName);
             GetTestConsumer().Reset();
             GetTestMessageInterceptor()?.Reset();
         }
 
-        protected async Task CleanupKafka()
+        protected async Task CleanupKafkaTopicsAsync()
         {
             var config = new AdminClientConfig();
             config.BootstrapServers = TestSettings.KafkaBootstrapServers;
-            try
+            using var admin = new AdminClientBuilder(config).Build();
+            Metadata kafkaMetadata = admin.GetMetadata(TimeSpan.FromSeconds(10));
+            foreach (var topic in new[] {AggregateType12, AggregateType34, AggregateTypeDelay, TestPartitionAssignmentTopic1, TestPartitionAssignmentTopic2})
             {
-                using (var admin = new AdminClientBuilder(config).Build())
+                TopicMetadata paMessagesMetadata = kafkaMetadata.Topics.Find(t => t.Topic.Equals(topic));
+                if (paMessagesMetadata != null)
                 {
-                    await admin.DeleteTopicsAsync(new[] {AggregateType12, AggregateType34});
-                }
-            }
-            catch (DeleteTopicsException e)
-            {
-                // Don't fail if topic wasn't found (nothing to delete)
-                if (e.Results.Where(r => r.Error.IsError).All(r => r.Error.Code == ErrorCode.UnknownTopicOrPart))
-                {
-                    TestContext.WriteLine(e.Message);
+                    await admin.DeleteRecordsAsync(paMessagesMetadata.Partitions.Select(p => new TopicPartitionOffset(new TopicPartition(
+                        topic, p.PartitionId), Offset.End)));
                 }
                 else
                 {
-                    throw;
+                    TestContext.WriteLine($"Topic {topic} did not exist.");
                 }
             }
         }
@@ -109,6 +114,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             TestContext.WriteLine("  Dispatcher Id:     {0}", _subscriberId);
             TestContext.WriteLine("  Aggregate Type 12: {0}", AggregateType12);
             TestContext.WriteLine("  Aggregate Type 34: {0}", AggregateType34);
+            TestContext.WriteLine("  Aggregate Type Delay: {0}", AggregateTypeDelay);
 
             TestContext.WriteLine("Test Results");
             TestContext.WriteLine("  N Messages in DB:  {0}", _dbContext.Messages.Count());
@@ -166,7 +172,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
                     provider =>
                     {
                         var consumer = provider.GetRequiredService<TestEventConsumer>();
-                        return consumer.DomainEventHandlers(AggregateType12, AggregateType34);
+                        return consumer.DomainEventHandlers(AggregateType12, AggregateType34, AggregateTypeDelay);
                     })
                 .SetConsumerConfigProperties(consumerConfigProperties)
                 .Build<TestEventConsumer>(withInterceptor);
@@ -179,8 +185,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             if (_host == null)
                 return;
 
-            var messageConsumer = _host.Services.GetService<IMessageConsumer>();
-            messageConsumer.Close();
+            _testServiceScope.Dispose();
             _host.StopAsync().Wait();
             _host.Dispose();
             _host = null;
@@ -209,10 +214,10 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
             return _dbContext;
         }
 
-        protected void ClearDb(EventuateTramDbContext dbContext, String eventuateDatabaseSchemaName)
+        protected static async Task ClearDbAsync(EventuateTramDbContext dbContext, String eventuateDatabaseSchemaName)
         {
-            dbContext.Database.ExecuteSqlRaw(String.Format("Delete from [{0}].[message]", eventuateDatabaseSchemaName));
-            dbContext.Database.ExecuteSqlRaw(String.Format("Delete from [{0}].[received_messages]", eventuateDatabaseSchemaName));
+            await dbContext.Database.ExecuteSqlRawAsync($"Delete from [{eventuateDatabaseSchemaName}].[message]");
+            await dbContext.Database.ExecuteSqlRawAsync($"Delete from [{eventuateDatabaseSchemaName}].[received_messages]");
         }
     }
 }

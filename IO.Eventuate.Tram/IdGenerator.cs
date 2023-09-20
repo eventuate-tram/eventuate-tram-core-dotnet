@@ -8,7 +8,6 @@
 using System;
 using System.Linq;
 using System.Net.NetworkInformation;
-using System.Threading;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 

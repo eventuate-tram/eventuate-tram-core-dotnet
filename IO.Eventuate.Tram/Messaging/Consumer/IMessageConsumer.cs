@@ -6,6 +6,7 @@
  */
 
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace IO.Eventuate.Tram.Messaging.Consumer
 {
@@ -22,10 +23,10 @@ namespace IO.Eventuate.Tram.Messaging.Consumer
 		/// <param name="channels">The set of channels to subscribe to.</param>
 		/// <param name="handler">A message handler method to call when a message is received.</param>
 		/// <returns>Message subscription</returns>
-		IMessageSubscription Subscribe(string subscriberId, ISet<string> channels, MessageHandler handler);
+		IMessageSubscription Subscribe(string subscriberId, ISet<string> channels, MessageHandlerAsync handler);
 
 		string GetId();
 
-		void Close();
+		Task CloseAsync();
 	}
 }

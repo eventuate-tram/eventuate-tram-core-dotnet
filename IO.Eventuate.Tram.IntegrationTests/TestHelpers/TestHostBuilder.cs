@@ -62,6 +62,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers
         public IHost Build<TConsumerType>(bool withInterceptor) where TConsumerType : class
         {
             _host = new HostBuilder()
+                .UseDefaultServiceProvider(options => options.ValidateScopes = true)
                 .ConfigureServices((hostContext, services) =>
                 {
                     services.AddDbContext<EventuateTramDbContext>((provider, o) =>
@@ -70,14 +71,14 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers
                             // Use a model cache key factory that ensures a new model is created if EventuateSchema is changed
                             .ReplaceService<IModelCacheKeyFactory, DynamicEventuateSchemaModelCacheKeyFactory>();
                     });
-                    services.AddEventuateTramSqlKafkaTransport(_eventuateDatabaseSchemaName, _kafkaBootstrapServers, EventuateKafkaConsumerConfigurationProperties.Empty(),
+                    services.AddEventuateTramSqlKafkaTransport(_eventuateDatabaseSchemaName, _kafkaBootstrapServers, _consumerConfigProperties,
                         (provider, o) =>
                         {
                             o.UseSqlServer(_sqlConnectionString);
                         });
                     if (withInterceptor)
                     {
-                        services.AddSingleton<IMessageInterceptor>(new TestMessageInterceptor());
+                        services.AddSingleton<IMessageInterceptor, TestMessageInterceptor>();
                     }
 
                     // Publisher Setup
@@ -87,6 +88,8 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers
                     services.AddSingleton<TConsumerType>();
                     services.AddEventuateTramDomainEventDispatcher(_subscriberId, _domainEventHandlersFactory);
                     services.AddSingleton<TestMessage4Handler>();
+
+                    services.Configure<HostOptions>((options) => options.ShutdownTimeout = TimeSpan.FromSeconds(30));
                 })
                 .Build();
             return _host;
