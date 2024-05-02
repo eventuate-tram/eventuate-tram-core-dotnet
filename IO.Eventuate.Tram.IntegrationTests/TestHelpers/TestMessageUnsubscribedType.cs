@@ -11,12 +11,13 @@ using IO.Eventuate.Tram.Events.Common;
 
 namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers
 {
-    public class TestMessageUnsubscribedType : IDomainEvent
-    {
-        public String Name { get; set; }
-        public TestMessageUnsubscribedType(String name)
-        {
-            Name = name;
-        }
-    }
+	public class TestMessageUnsubscribedType : IDomainEvent
+	{
+		public String Name { get; set; }
+
+		public TestMessageUnsubscribedType(String name)
+		{
+			Name = name;
+		}
+	}
 }

@@ -1,6 +1,6 @@
 {
   "KafkaBootstrapServers":  "localhost:9092",
   "ConnectionStrings": {
-    "EventuateTramDbConnection": "Server=localhost,1433;Database=TramDb;User Id=sa;Password=TestPa55word"
+    "EventuateTramDbConnection": "Server=localhost,1433;Database=TramDb;User Id=sa;Password=TestPa55word;TrustServerCertificate=True"
   }
 }

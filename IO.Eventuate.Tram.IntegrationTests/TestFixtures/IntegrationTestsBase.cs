@@ -17,207 +17,220 @@ using NUnit.Framework;
 
 namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
 {
-    public class IntegrationTestsBase
-    {
-        private const string TestSettingsFile = "testsettings.json";
-        private string _subscriberId = "xx";
-        protected const string AggregateType12 = "TestMessage12Topic";
-        protected const string AggregateType34 = "TestMessage34Topic";
-        protected const string AggregateTypeDelay = "TestMessageDelayTopic";
-        protected const string TestPartitionAssignmentTopic1 = "TestPartitionAssignmentTopic1";
-        protected const string TestPartitionAssignmentTopic2 = "TestPartitionAssignmentTopic2";
-        protected string EventuateDatabaseSchemaName = "eventuate";
-        public static string PingFileName = "ping.txt";
+	public class IntegrationTestsBase
+	{
+		private const string TestSettingsFile = "testsettings.json";
+		private string _subscriberId = "xx";
+		protected const string AggregateType12 = "TestMessage12Topic";
+		protected const string AggregateType34 = "TestMessage34Topic";
+		protected const string AggregateTypeDelay = "TestMessageDelayTopic";
+		protected const string TestPartitionAssignmentTopic1 = "TestPartitionAssignmentTopic1";
+		protected const string TestPartitionAssignmentTopic2 = "TestPartitionAssignmentTopic2";
+		protected string EventuateDatabaseSchemaName = "eventuate";
+		public static string PingFileName = "ping.txt";
 
-        protected TestSettings TestSettings;
+		protected TestSettings TestSettings;
 
-        private static IHost _host;
-        private static IServiceScope _testServiceScope;
-        private static EventuateTramDbContext _dbContext;
-        private static IDomainEventPublisher _domainEventPublisher;
-        private static TestEventConsumer _testEventConsumer;
-        private static TestMessageInterceptor _interceptor;
+		private static IHost _host;
+		private static IServiceScope _testServiceScope;
+		private static EventuateTramDbContext _dbContext;
+		private static IDomainEventPublisher _domainEventPublisher;
+		private static TestEventConsumer _testEventConsumer;
+		private static TestMessageInterceptor _interceptor;
 
-        public IntegrationTestsBase()
-        {
-            IConfigurationRoot configuration;
-            try
-            {
-                IConfigurationBuilder configurationBuilder = new ConfigurationBuilder();
-                ConfigureFromEnvironmentAndSettingsFile(configurationBuilder);
-                configuration = configurationBuilder.Build();
-            }
-            catch
-            {
-                IConfigurationBuilder configurationBuilder = new ConfigurationBuilder();
-                ConfigureFromEnvironment(configurationBuilder);
-                configuration = configurationBuilder.Build();
-            }
+		public IntegrationTestsBase()
+		{
+			IConfigurationRoot configuration;
+			try
+			{
+				IConfigurationBuilder configurationBuilder = new ConfigurationBuilder();
+				ConfigureFromEnvironmentAndSettingsFile(configurationBuilder);
+				configuration = configurationBuilder.Build();
+			}
+			catch
+			{
+				IConfigurationBuilder configurationBuilder = new ConfigurationBuilder();
+				ConfigureFromEnvironment(configurationBuilder);
+				configuration = configurationBuilder.Build();
+			}
 
-            TestSettings = configuration.Get<TestSettings>();
-        }
+			TestSettings = configuration.Get<TestSettings>();
+		}
 
-        protected void TestSetup(string schema, bool withInterceptor, EventuateKafkaConsumerConfigurationProperties consumerConfigProperties)
-        {
-            EventuateDatabaseSchemaName = schema;
-            _subscriberId = Guid.NewGuid().ToString();
-            
-            // Clear the ping file
-            File.WriteAllText(PingFileName, string.Empty);
+		protected void TestSetup(string schema, bool withInterceptor,
+			EventuateKafkaConsumerConfigurationProperties consumerConfigProperties)
+		{
+			EventuateDatabaseSchemaName = schema;
+			_subscriberId = Guid.NewGuid().ToString();
 
-            if (_host == null)
-            {
-                _host = SetupTestHost(withInterceptor, consumerConfigProperties);
-                var scopeFactory = _host.Services.GetRequiredService<IServiceScopeFactory>();
-                _testServiceScope = scopeFactory.CreateScope();
-                _dbContext = _testServiceScope.ServiceProvider.GetRequiredService<EventuateTramDbContext>();
-                _domainEventPublisher = _testServiceScope.ServiceProvider.GetRequiredService<IDomainEventPublisher>();
-                _testEventConsumer = _testServiceScope.ServiceProvider.GetRequiredService<TestEventConsumer>();
-                _interceptor = (TestMessageInterceptor)_testServiceScope.ServiceProvider.GetService<IMessageInterceptor>();
-            }
-        }
+			// Clear the ping file
+			File.WriteAllText(PingFileName, string.Empty);
 
-        protected async Task CleanupTestAsync()
-        {
-            await ClearDbAsync(GetDbContext(), EventuateDatabaseSchemaName);
-            GetTestConsumer().Reset();
-            GetTestMessageInterceptor()?.Reset();
-        }
+			if (_host == null)
+			{
+				_host = SetupTestHost(withInterceptor, consumerConfigProperties);
+				var scopeFactory = _host.Services.GetRequiredService<IServiceScopeFactory>();
+				_testServiceScope = scopeFactory.CreateScope();
+				_dbContext = _testServiceScope.ServiceProvider.GetRequiredService<EventuateTramDbContext>();
+				_domainEventPublisher = _testServiceScope.ServiceProvider.GetRequiredService<IDomainEventPublisher>();
+				_testEventConsumer = _testServiceScope.ServiceProvider.GetRequiredService<TestEventConsumer>();
+				_interceptor =
+					(TestMessageInterceptor)_testServiceScope.ServiceProvider.GetService<IMessageInterceptor>();
+			}
+		}
 
-        protected async Task CleanupKafkaTopicsAsync()
-        {
-            var config = new AdminClientConfig();
-            config.BootstrapServers = TestSettings.KafkaBootstrapServers;
-            using var admin = new AdminClientBuilder(config).Build();
-            Metadata kafkaMetadata = admin.GetMetadata(TimeSpan.FromSeconds(10));
-            foreach (var topic in new[] {AggregateType12, AggregateType34, AggregateTypeDelay, TestPartitionAssignmentTopic1, TestPartitionAssignmentTopic2})
-            {
-                TopicMetadata paMessagesMetadata = kafkaMetadata.Topics.Find(t => t.Topic.Equals(topic));
-                if (paMessagesMetadata != null)
-                {
-                    await admin.DeleteRecordsAsync(paMessagesMetadata.Partitions.Select(p => new TopicPartitionOffset(new TopicPartition(
-                        topic, p.PartitionId), Offset.End)));
-                }
-                else
-                {
-                    TestContext.WriteLine($"Topic {topic} did not exist.");
-                }
-            }
-        }
+		protected async Task CleanupTestAsync()
+		{
+			await ClearDbAsync(GetDbContext(), EventuateDatabaseSchemaName);
+			GetTestConsumer().Reset();
+			GetTestMessageInterceptor()?.Reset();
+		}
 
-        protected void ShowTestResults()
-        {
-            TestContext.WriteLine("Test Config");
-            TestContext.WriteLine("  Connection String: {0}", TestSettings.ConnectionStrings.EventuateTramDbConnection);
-            TestContext.WriteLine("  Kafka server:      {0}", TestSettings.KafkaBootstrapServers);
-            TestContext.WriteLine("  Schema:            {0}", EventuateDatabaseSchemaName);
-            TestContext.WriteLine("  Dispatcher Id:     {0}", _subscriberId);
-            TestContext.WriteLine("  Aggregate Type 12: {0}", AggregateType12);
-            TestContext.WriteLine("  Aggregate Type 34: {0}", AggregateType34);
-            TestContext.WriteLine("  Aggregate Type Delay: {0}", AggregateTypeDelay);
+		protected async Task CleanupKafkaTopicsAsync()
+		{
+			var config = new AdminClientConfig();
+			config.BootstrapServers = TestSettings.KafkaBootstrapServers;
+			using var admin = new AdminClientBuilder(config).Build();
+			Metadata kafkaMetadata = admin.GetMetadata(TimeSpan.FromSeconds(10));
+			foreach (var topic in new[]
+			         {
+				         AggregateType12, AggregateType34, AggregateTypeDelay, TestPartitionAssignmentTopic1,
+				         TestPartitionAssignmentTopic2
+			         })
+			{
+				TopicMetadata paMessagesMetadata = kafkaMetadata.Topics.Find(t => t.Topic.Equals(topic));
+				if (paMessagesMetadata != null)
+				{
+					await admin.DeleteRecordsAsync(paMessagesMetadata.Partitions.Select(p =>
+						new TopicPartitionOffset(new TopicPartition(
+							topic, p.PartitionId), Offset.End)));
+				}
+				else
+				{
+					TestContext.WriteLine($"Topic {topic} did not exist.");
+				}
+			}
+		}
 
-            TestContext.WriteLine("Test Results");
-            TestContext.WriteLine("  N Messages in DB:  {0}", _dbContext.Messages.Count());
-            TestContext.WriteLine("  Unpublished Count: {0}", _dbContext.Messages.Count(msg => msg.Published == 0));
-            TestContext.WriteLine("  N Received in DB:  {0}", _dbContext.ReceivedMessages.Count(msg => msg.MessageId != null));
-            foreach (Type eventType in _testEventConsumer.GetEventTypes())
-            {
-                TestContext.WriteLine($"  Received {eventType.Name}   {_testEventConsumer.GetEventStatistics(eventType).MessageCount}");
-            }
-            TestContext.WriteLine("  Exception Count:   {0}", _testEventConsumer.ExceptionCount);
+		protected void ShowTestResults()
+		{
+			TestContext.WriteLine("Test Config");
+			TestContext.WriteLine("  Connection String: {0}", TestSettings.ConnectionStrings.EventuateTramDbConnection);
+			TestContext.WriteLine("  Kafka server:      {0}", TestSettings.KafkaBootstrapServers);
+			TestContext.WriteLine("  Schema:            {0}", EventuateDatabaseSchemaName);
+			TestContext.WriteLine("  Dispatcher Id:     {0}", _subscriberId);
+			TestContext.WriteLine("  Aggregate Type 12: {0}", AggregateType12);
+			TestContext.WriteLine("  Aggregate Type 34: {0}", AggregateType34);
+			TestContext.WriteLine("  Aggregate Type Delay: {0}", AggregateTypeDelay);
 
-            if (_interceptor != null)
-            {
-                TestContext.WriteLine("Message Interceptor Counts");
-                TestContext.WriteLine("  Pre Send:     {0}", _interceptor.PreSendCount);
-                TestContext.WriteLine("  Post Send:    {0}", _interceptor.PostSendCount);
-                TestContext.WriteLine("  Pre Receive:  {0}", _interceptor.PreReceiveCount);
-                TestContext.WriteLine("  Post Receive: {0}", _interceptor.PostReceiveCount);
-                TestContext.WriteLine("  Pre Handle:   {0}", _interceptor.PreHandleCount);
-                TestContext.WriteLine("  Post Handle:  {0}", _interceptor.PostHandleCount);
-            }
-        }
+			TestContext.WriteLine("Test Results");
+			TestContext.WriteLine("  N Messages in DB:  {0}", _dbContext.Messages.Count());
+			TestContext.WriteLine("  Unpublished Count: {0}", _dbContext.Messages.Count(msg => msg.Published == 0));
+			TestContext.WriteLine("  N Received in DB:  {0}",
+				_dbContext.ReceivedMessages.Count(msg => msg.MessageId != null));
+			foreach (Type eventType in _testEventConsumer.GetEventTypes())
+			{
+				TestContext.WriteLine(
+					$"  Received {eventType.Name}   {_testEventConsumer.GetEventStatistics(eventType).MessageCount}");
+			}
 
-        /// <summary>
-        /// Set up the configuration for the HostBuilder
-        /// </summary>
-        protected void ConfigureFromEnvironmentAndSettingsFile(IConfigurationBuilder config,
-            Dictionary<string, string> overrides = null)
-        {
-            config
-                .AddJsonFile(TestSettingsFile, false)
-                .AddEnvironmentVariables()
-                .AddInMemoryCollection(overrides);
-        }
+			TestContext.WriteLine("  Exception Count:   {0}", _testEventConsumer.ExceptionCount);
 
-        /// <summary>
-        /// Set up the configuration for the HostBuilder
-        /// </summary>
-        protected void ConfigureFromEnvironment(IConfigurationBuilder config,
-            Dictionary<string, string> overrides = null)
-        {
-            config
-                .AddEnvironmentVariables()
-                .AddInMemoryCollection(overrides);
-        }
+			if (_interceptor != null)
+			{
+				TestContext.WriteLine("Message Interceptor Counts");
+				TestContext.WriteLine("  Pre Send:     {0}", _interceptor.PreSendCount);
+				TestContext.WriteLine("  Post Send:    {0}", _interceptor.PostSendCount);
+				TestContext.WriteLine("  Pre Receive:  {0}", _interceptor.PreReceiveCount);
+				TestContext.WriteLine("  Post Receive: {0}", _interceptor.PostReceiveCount);
+				TestContext.WriteLine("  Pre Handle:   {0}", _interceptor.PreHandleCount);
+				TestContext.WriteLine("  Post Handle:  {0}", _interceptor.PostHandleCount);
+			}
+		}
 
-        protected IHost SetupTestHost(bool withInterceptor, EventuateKafkaConsumerConfigurationProperties consumerConfigProperties)
-        {
-            var host = new TestHostBuilder()
-                .SetConnectionString(TestSettings.ConnectionStrings.EventuateTramDbConnection)
-                .SetEventuateDatabaseSchemaName(EventuateDatabaseSchemaName)
-                .SetKafkaBootstrapServers(TestSettings.KafkaBootstrapServers)
-                .SetSubscriberId(_subscriberId)
-                .SetDomainEventHandlersFactory(
-                    provider =>
-                    {
-                        var consumer = provider.GetRequiredService<TestEventConsumer>();
-                        return consumer.DomainEventHandlers(AggregateType12, AggregateType34, AggregateTypeDelay);
-                    })
-                .SetConsumerConfigProperties(consumerConfigProperties)
-                .Build<TestEventConsumer>(withInterceptor);
-            host.StartAsync().Wait();
-            return host;
-        }
+		/// <summary>
+		/// Set up the configuration for the HostBuilder
+		/// </summary>
+		protected void ConfigureFromEnvironmentAndSettingsFile(IConfigurationBuilder config,
+			Dictionary<string, string> overrides = null)
+		{
+			config
+				.AddJsonFile(TestSettingsFile, false)
+				.AddEnvironmentVariables()
+				.AddInMemoryCollection(overrides);
+		}
 
-        protected void DisposeTestHost()
-        {
-            if (_host == null)
-                return;
+		/// <summary>
+		/// Set up the configuration for the HostBuilder
+		/// </summary>
+		protected void ConfigureFromEnvironment(IConfigurationBuilder config,
+			Dictionary<string, string> overrides = null)
+		{
+			config
+				.AddEnvironmentVariables()
+				.AddInMemoryCollection(overrides);
+		}
 
-            _testServiceScope.Dispose();
-            _host.StopAsync().Wait();
-            _host.Dispose();
-            _host = null;
-            _dbContext = null;
-            _domainEventPublisher = null;
-            _testEventConsumer = null;
-        }
+		protected IHost SetupTestHost(bool withInterceptor,
+			EventuateKafkaConsumerConfigurationProperties consumerConfigProperties)
+		{
+			var host = new TestHostBuilder()
+				.SetConnectionString(TestSettings.ConnectionStrings.EventuateTramDbConnection)
+				.SetEventuateDatabaseSchemaName(EventuateDatabaseSchemaName)
+				.SetKafkaBootstrapServers(TestSettings.KafkaBootstrapServers)
+				.SetSubscriberId(_subscriberId)
+				.SetDomainEventHandlersFactory(
+					provider =>
+					{
+						var consumer = provider.GetRequiredService<TestEventConsumer>();
+						return consumer.DomainEventHandlers(AggregateType12, AggregateType34, AggregateTypeDelay);
+					})
+				.SetConsumerConfigProperties(consumerConfigProperties)
+				.Build<TestEventConsumer>(withInterceptor);
+			host.StartAsync().Wait();
+			return host;
+		}
 
-        protected TestEventConsumer GetTestConsumer()
-        {
-            return _testEventConsumer;
-        }
+		protected void DisposeTestHost()
+		{
+			if (_host == null)
+				return;
 
-        protected TestMessageInterceptor GetTestMessageInterceptor()
-        {
-            return _interceptor;
-        }
+			_testServiceScope.Dispose();
+			_host.StopAsync().Wait();
+			_host.Dispose();
+			_host = null;
+			_dbContext = null;
+			_domainEventPublisher = null;
+			_testEventConsumer = null;
+		}
 
-        protected IDomainEventPublisher GetTestPublisher()
-        {
-            return _domainEventPublisher;
-        }
+		protected TestEventConsumer GetTestConsumer()
+		{
+			return _testEventConsumer;
+		}
 
-        protected EventuateTramDbContext GetDbContext()
-        {
-            return _dbContext;
-        }
+		protected TestMessageInterceptor GetTestMessageInterceptor()
+		{
+			return _interceptor;
+		}
 
-        protected static async Task ClearDbAsync(EventuateTramDbContext dbContext, String eventuateDatabaseSchemaName)
-        {
-            await dbContext.Database.ExecuteSqlRawAsync($"Delete from [{eventuateDatabaseSchemaName}].[message]");
-            await dbContext.Database.ExecuteSqlRawAsync($"Delete from [{eventuateDatabaseSchemaName}].[received_messages]");
-        }
-    }
+		protected IDomainEventPublisher GetTestPublisher()
+		{
+			return _domainEventPublisher;
+		}
+
+		protected EventuateTramDbContext GetDbContext()
+		{
+			return _dbContext;
+		}
+
+		protected static async Task ClearDbAsync(EventuateTramDbContext dbContext, string eventuateDatabaseSchemaName)
+		{
+			var cleanMessagesSql = $"Delete from [{eventuateDatabaseSchemaName}].[message]";
+			await dbContext.Database.ExecuteSqlRawAsync(cleanMessagesSql);
+			var cleanReceivedMessagesSql = $"Delete from [{eventuateDatabaseSchemaName}].[received_messages]";
+			await dbContext.Database.ExecuteSqlRawAsync(cleanReceivedMessagesSql);
+		}
+	}
 }

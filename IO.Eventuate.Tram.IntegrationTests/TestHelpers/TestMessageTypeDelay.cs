@@ -11,14 +11,14 @@ using IO.Eventuate.Tram.Events.Common;
 
 namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers
 {
-    [EventType(EventTypeName)]
-    public class TestMessageTypeDelay : TestMessageType2
-    {
-        public new const string EventTypeName = "testing.TestMessageTypeDelay";
-        
-        public TestMessageTypeDelay(String name, int value)
-		: base(name, value)
-        {
-        }
-    }
+	[EventType(EventTypeName)]
+	public class TestMessageTypeDelay : TestMessageType2
+	{
+		public new const string EventTypeName = "testing.TestMessageTypeDelay";
+
+		public TestMessageTypeDelay(String name, int value)
+			: base(name, value)
+		{
+		}
+	}
 }
