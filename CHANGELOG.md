@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Upgraded target framework to net8.0
+- Upgraded Microsoft package dependencies to 8.0 versions
+- Upgraded Confluent.Kafka package to version 2.3.0
+
 ## [0.3.0] - 2023-09-20
 
 ### Added

@@ -314,7 +314,7 @@ $ export CDC_SERVICE_DOCKER_VERSION=<CDC docker tag>
 $ ./test.sh
 ```
 
-Test results will be written to ./bin/Release/net6.0/TestResults.
+Test results will be written to ./bin/Release/net8.0/TestResults.
 
 ### Environment Variable Configuration
 

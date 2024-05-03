@@ -15,8 +15,8 @@ namespace IO.Eventuate.Tram.UnitTests.Messaging.Producer
 			// Act
 			Message sourceMessage = new Message("The payload", new Dictionary<string, string>
 			{
-				{"Header1", "HeaderValue" },
-				{MessageHeaders.Id, "MyMessage" }
+				{ "Header1", "HeaderValue" },
+				{ MessageHeaders.Id, "MyMessage" }
 			});
 			Message builtMessage = MessageBuilder.WithMessage(sourceMessage).Build();
 

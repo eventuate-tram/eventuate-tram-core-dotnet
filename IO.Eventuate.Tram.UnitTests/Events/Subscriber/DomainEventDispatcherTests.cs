@@ -14,66 +14,65 @@ using NUnit.Framework;
 
 namespace IO.Eventuate.Tram.UnitTests.Events.Subscriber
 {
-    public class DomainEventDispatcherTests
-    {
-        private const String SubscriberId = "123ABC";
-        private const String AggregateType = "AggregateType";
+	public class DomainEventDispatcherTests
+	{
+		private const String SubscriberId = "123ABC";
+		private const String AggregateType = "AggregateType";
 
-        private const String AggregateId = "xyz";
-        private readonly String _messageId = "message-" + DateTime.Now;
+		private const String AggregateId = "xyz";
+		private readonly String _messageId = "message-" + DateTime.Now;
 
-        private class MyTarget
-        {
-            public readonly ConcurrentQueue<IDomainEventEnvelope<IDomainEvent>> Queue = new();
+		private class MyTarget
+		{
+			public readonly ConcurrentQueue<IDomainEventEnvelope<IDomainEvent>> Queue = new();
 
-            public DomainEventHandlers DomainEventHandlers()
-            {
-                return DomainEventHandlersBuilder
-                    .ForAggregateType(AggregateType)
-                    .OnEvent<MyDomainEvent>(HandleAccountDebitedAsync)
-                    .Build();
-            }
+			public DomainEventHandlers DomainEventHandlers()
+			{
+				return DomainEventHandlersBuilder
+					.ForAggregateType(AggregateType)
+					.OnEvent<MyDomainEvent>(HandleAccountDebitedAsync)
+					.Build();
+			}
 
-            private Task HandleAccountDebitedAsync(IDomainEventEnvelope<MyDomainEvent> message)
-            {
-                Queue.Enqueue(message);
-                return Task.CompletedTask;
-            }
+			private Task HandleAccountDebitedAsync(IDomainEventEnvelope<MyDomainEvent> message)
+			{
+				Queue.Enqueue(message);
+				return Task.CompletedTask;
+			}
+		}
 
-        }
+		private class MyDomainEvent : IDomainEvent
+		{
+		}
 
-        private class MyDomainEvent : IDomainEvent
-        {
-        }
-
-        [Test]
-        public async Task MessageHandler_ValidMessage_RegisteredHandlerCalled()
-        {
+		[Test]
+		public async Task MessageHandler_ValidMessage_RegisteredHandlerCalled()
+		{
 			// Arrange
-            MyTarget target = new MyTarget();
+			MyTarget target = new MyTarget();
 
-            var messageConsumer = Substitute.For<IMessageConsumer>();
-            var serviceProvider = Substitute.For<IServiceProvider>();
-	        var logger = Substitute.For<ILogger<DomainEventDispatcher>>();
-            var eventTypeNamingStrategy = Substitute.For<IEventTypeNamingStrategy>();
-            eventTypeNamingStrategy.GetEventTypeName(typeof(MyDomainEvent)).Returns(typeof(MyDomainEvent).FullName);
+			var messageConsumer = Substitute.For<IMessageConsumer>();
+			var serviceProvider = Substitute.For<IServiceProvider>();
+			var logger = Substitute.For<ILogger<DomainEventDispatcher>>();
+			var eventTypeNamingStrategy = Substitute.For<IEventTypeNamingStrategy>();
+			eventTypeNamingStrategy.GetEventTypeName(typeof(MyDomainEvent)).Returns(typeof(MyDomainEvent).FullName);
 
-            DomainEventDispatcher dispatcher = new DomainEventDispatcher(
-	            SubscriberId, target.DomainEventHandlers(), messageConsumer, eventTypeNamingStrategy, logger);
+			DomainEventDispatcher dispatcher = new DomainEventDispatcher(
+				SubscriberId, target.DomainEventHandlers(), messageConsumer, eventTypeNamingStrategy, logger);
 
-            await dispatcher.InitializeAsync();
+			await dispatcher.InitializeAsync();
 
 			// Act
-            await dispatcher.MessageHandlerAsync(DomainEventPublisher.MakeMessageForDomainEvent(AggregateType,
-                AggregateId, new Dictionary<string, string> {{ MessageHeaders.Id, _messageId } },
-                new MyDomainEvent(), eventTypeNamingStrategy), serviceProvider, CancellationToken.None);
+			await dispatcher.MessageHandlerAsync(DomainEventPublisher.MakeMessageForDomainEvent(AggregateType,
+				AggregateId, new Dictionary<string, string> { { MessageHeaders.Id, _messageId } },
+				new MyDomainEvent(), eventTypeNamingStrategy), serviceProvider, CancellationToken.None);
 
 			// Assert
-            Assert.True(target.Queue.TryPeek(out var dee));
-            Assert.NotNull(dee);
-            Assert.AreEqual(AggregateId, dee.AggregateId);
-            Assert.AreEqual(AggregateType, dee.AggregateType);
-            Assert.AreEqual(_messageId, dee.EventId);
-        }
-    }
+			Assert.That(target.Queue.TryPeek(out var dee));
+			Assert.That(dee, Is.Not.Null);
+			Assert.That(dee.AggregateId, Is.EqualTo(AggregateId));
+			Assert.That(dee.AggregateType, Is.EqualTo(AggregateType));
+			Assert.That(dee.EventId, Is.EqualTo(_messageId));
+		}
+	}
 }

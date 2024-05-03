@@ -16,10 +16,10 @@ jobs:
     - name: Checkout source
       uses: actions/checkout@v4
 
-    - name: Setup .NET Core
-      uses: actions/setup-dotnet@v3
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 6.0.414
+        dotnet-version: 8.0.204
 
     - name: Build
       env:
@@ -29,7 +29,7 @@ jobs:
       run: ./build.sh
 
     - name: Upload bin folder
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: bin
         path: IO.Eventuate.Tram/bin
@@ -38,7 +38,7 @@ jobs:
       run: dotnet test -c Release --no-build --verbosity normal --logger trx IO.Eventuate.Tram.UnitTests/
 
     - name: Upload unit test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: unit-test-results
@@ -57,11 +57,11 @@ jobs:
         docker stats --no-stream --all
 
     - name: Upload integration test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: integration-test-results
-        path: IO.Eventuate.Tram.IntegrationTests/bin/Release/net6.0/TestResults
+        path: IO.Eventuate.Tram.IntegrationTests/bin/Release/net8.0/TestResults
 
     - name: Publish nuget package
       # Don't publish nuget packages for builds triggered by pull requests (pull requests from forks won't have access to secrets anyway)

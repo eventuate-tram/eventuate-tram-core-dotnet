@@ -10,7 +10,7 @@ namespace IO.Eventuate.Tram.IntegrationTests.TestHelpers
 	/// </summary>
 	public class DynamicEventuateSchemaModelCacheKeyFactory : IModelCacheKeyFactory
 	{
-		public object Create(DbContext context)
+		public object Create(DbContext context, bool designTime)
 		{
 			if (context is EventuateTramDbContext eventuateTramDbContext)
 			{

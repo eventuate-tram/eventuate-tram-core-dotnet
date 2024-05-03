@@ -9,57 +9,59 @@ using NUnit.Framework;
 
 namespace IO.Eventuate.Tram.IntegrationTests.TestFixtures
 {
-    [TestFixture]
-    public class PerformanceTests : IntegrationTestsBase
-    {
-        [SetUp]
-        public async Task Setup()
-        {
-            await CleanupKafkaTopicsAsync();
-            TestSetup("eventuate", false, EventuateKafkaConsumerConfigurationProperties.Empty());
-            await CleanupTestAsync();
-        }
+	[TestFixture]
+	public class PerformanceTests : IntegrationTestsBase
+	{
+		[SetUp]
+		public async Task Setup()
+		{
+			await CleanupKafkaTopicsAsync();
+			TestSetup("eventuate", false, EventuateKafkaConsumerConfigurationProperties.Empty());
+			await CleanupTestAsync();
+		}
 
-        [TearDown]
-        public void TearDown()
-        {
-            DisposeTestHost();
-        }
+		[TearDown]
+		public void TearDown()
+		{
+			DisposeTestHost();
+		}
 
-        [Test]
-        public void Send1000Message_Within1Minute()
-        {
-            // Arrange
-            TestMessageType1 msg1 = new TestMessageType1("Msg1", 1, 1.2);
-            TestEventConsumer consumer = GetTestConsumer();
-            TestEventConsumer.EventStatistics type1Statistics = consumer.GetEventStatistics(
-                typeof(TestMessageType1));
+		[Test]
+		public void Send1000Message_Within1Minute()
+		{
+			// Arrange
+			TestMessageType1 msg1 = new TestMessageType1("Msg1", 1, 1.2);
+			TestEventConsumer consumer = GetTestConsumer();
+			TestEventConsumer.EventStatistics type1Statistics = consumer.GetEventStatistics(
+				typeof(TestMessageType1));
 
-            // Act
-            for (int x = 0; x < 1000; x++)
-            {
-                GetTestPublisher().Publish(AggregateType12, AggregateType12, new List<IDomainEvent> { msg1 });
-            }
+			// Act
+			for (int x = 0; x < 1000; x++)
+			{
+				GetTestPublisher().Publish(AggregateType12, AggregateType12, new List<IDomainEvent> { msg1 });
+			}
 
-            // Allow time for messages to process
-            int count = 300;
-            while (type1Statistics.MessageCount < 1000 && count > 0)
-            {
-                Thread.Sleep(1000);
-                count--;
-            }
+			// Allow time for messages to process
+			int count = 300;
+			while (type1Statistics.MessageCount < 1000 && count > 0)
+			{
+				Thread.Sleep(1000);
+				count--;
+			}
 
-            ShowTestResults();
+			ShowTestResults();
 
-            // Assert
-            Assert.AreEqual(1000, GetDbContext().Messages.Count(), "Expect 1000 messages produced");
-            Assert.AreEqual(1000, type1Statistics.MessageCount, "Received by consumer count must be 1000");
-            Assert.AreEqual(0, GetDbContext().Messages.Count(msg => msg.Published == 0), "No unpublished messages");
-            Assert.AreEqual(1000, GetDbContext().ReceivedMessages.Count(msg => msg.MessageId != null), "Expect 1000 messages received");
-            Assert.Less(type1Statistics.GetDuration().TotalSeconds, 60.0, "Time to send 1000 messages");
+			// Assert
+			Assert.That(GetDbContext().Messages.Count(), Is.EqualTo(1000), "Expect 1000 messages produced");
+			Assert.That(type1Statistics.MessageCount, Is.EqualTo(1000), "Received by consumer count must be 1000");
+			Assert.That(GetDbContext().Messages.Count(msg => msg.Published == 0), Is.EqualTo(0),
+				"No unpublished messages");
+			Assert.That(GetDbContext().ReceivedMessages.Count(msg => msg.MessageId != null), Is.EqualTo(1000),
+				"Expect 1000 messages received");
+			Assert.That(type1Statistics.GetDuration().TotalSeconds, Is.LessThan(60.0), "Time to send 1000 messages");
 
-            TestContext.WriteLine("Performance Test completed in {0} seconds",
-                type1Statistics.GetDuration().TotalSeconds);
-        }
-    }
+			TestContext.WriteLine("Performance Test completed in {0} seconds",
+				type1Statistics.GetDuration().TotalSeconds);
+		}
+	}
 }
