@@ -17,6 +17,7 @@ namespace IO.Eventuate.Tram.Events.Subscriber
 {
 	public class DomainEventDispatcher
 	{
+		private readonly IJsonMapper _jsonMapper;
 		private readonly ILogger _logger;
 		private readonly string _dispatcherContext;
 		private readonly string _subscriberId;
@@ -29,20 +30,21 @@ namespace IO.Eventuate.Tram.Events.Subscriber
 
 		public DomainEventDispatcher(string subscriberId, DomainEventHandlers domainEventHandlers,
 			IMessageConsumer messageConsumer, IEventTypeNamingStrategy eventTypeNamingStrategy,
-			ILogger<DomainEventDispatcher> logger)
+			IJsonMapper jsonMapper, ILogger<DomainEventDispatcher> logger)
 			: this(subscriberId, () => Task.FromResult(domainEventHandlers), messageConsumer,
-				eventTypeNamingStrategy, logger)
+				eventTypeNamingStrategy, jsonMapper, logger)
 		{
 		}
 
 		public DomainEventDispatcher(string subscriberId, Func<Task<DomainEventHandlers>> domainEventHandlersFactory,
 			IMessageConsumer messageConsumer, IEventTypeNamingStrategy eventTypeNamingStrategy,
-			ILogger<DomainEventDispatcher> logger)
+			IJsonMapper jsonMapper, ILogger<DomainEventDispatcher> logger)
 		{
 			_subscriberId = subscriberId;
 			_domainEventHandlersFactory = domainEventHandlersFactory;
 			_messageConsumer = messageConsumer;
 			_eventTypeNamingStrategy = eventTypeNamingStrategy;
+			_jsonMapper = jsonMapper;
 			_logger = logger;
 			_dispatcherContext = $"SubscriberId='{subscriberId}'";
 		}
@@ -78,7 +80,7 @@ namespace IO.Eventuate.Tram.Events.Subscriber
 				return;
 			}
 
-			var param = (IDomainEvent)JsonMapper.FromJson(message.Payload, handler.EventType);
+			var param = (IDomainEvent)_jsonMapper.FromJson(message.Payload, handler.EventType);
 			
 			Type envelopeType = typeof(DomainEventEnvelope<>).MakeGenericType(handler.EventType);
 			var envelope = (IDomainEventEnvelope<IDomainEvent>) Activator.CreateInstance(envelopeType,

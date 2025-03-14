@@ -55,17 +55,18 @@ namespace IO.Eventuate.Tram.UnitTests.Events.Subscriber
 			var serviceProvider = Substitute.For<IServiceProvider>();
 			var logger = Substitute.For<ILogger<DomainEventDispatcher>>();
 			var eventTypeNamingStrategy = Substitute.For<IEventTypeNamingStrategy>();
+			var jsonMapper = Substitute.For<IJsonMapper>();
 			eventTypeNamingStrategy.GetEventTypeName(typeof(MyDomainEvent)).Returns(typeof(MyDomainEvent).FullName);
 
 			DomainEventDispatcher dispatcher = new DomainEventDispatcher(
-				SubscriberId, target.DomainEventHandlers(), messageConsumer, eventTypeNamingStrategy, logger);
+				SubscriberId, target.DomainEventHandlers(), messageConsumer, eventTypeNamingStrategy, jsonMapper, logger);
 
 			await dispatcher.InitializeAsync();
 
 			// Act
 			await dispatcher.MessageHandlerAsync(DomainEventPublisher.MakeMessageForDomainEvent(AggregateType,
 				AggregateId, new Dictionary<string, string> { { MessageHeaders.Id, _messageId } },
-				new MyDomainEvent(), eventTypeNamingStrategy), serviceProvider, CancellationToken.None);
+				new MyDomainEvent(), eventTypeNamingStrategy, jsonMapper), serviceProvider, CancellationToken.None);
 
 			// Assert
 			Assert.That(target.Queue.TryPeek(out var dee));

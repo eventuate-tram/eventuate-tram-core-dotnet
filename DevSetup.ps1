@@ -9,8 +9,8 @@ docker compose up -d kafka
 Start-Sleep -Seconds 40
 docker stats --no-stream
 
-docker-compose up --exit-code-from kafka-setup kafka-setup
-docker compose up --exit-code-from dbsetup dbsetup
+docker compose run --rm kafka-setup
+docker compose run --rm dbsetup
 docker compose up -d cdcservice
 
 docker compose up -d kafka-ui
