@@ -4,6 +4,7 @@ set -e
 set -x
 
 docker compose down
+docker compose pull
 docker compose up -d mssql
 
 # Wait for MSSQL to start up
