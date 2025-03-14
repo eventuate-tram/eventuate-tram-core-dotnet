@@ -10,12 +10,6 @@ docker compose up -d mssql
 # Wait for MSSQL to start up
 sleep 40s
 
-# Print docker status
-docker ps
-docker stats --no-stream --all
-
-docker compose logs mssql
-
 docker compose run --rm kafka-setup
 docker compose run --rm dbsetup
 docker compose up -d zookeeper
