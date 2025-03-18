@@ -27,6 +27,7 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 		private readonly DecoratedMessageHandlerFactory _decoratedMessageHandlerFactory;
 		private readonly ILoggerFactory _loggerFactory;
 		private readonly IServiceScopeFactory _serviceScopeFactory;
+		private readonly IJsonMapper _jsonMapper;
 
 		private readonly string _id = Guid.NewGuid().ToString();
 		private readonly string _bootstrapServers;
@@ -37,13 +38,14 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 		public KafkaMessageConsumer(string bootstrapServers,
 			EventuateKafkaConsumerConfigurationProperties eventuateKafkaConsumerConfigurationProperties,
 			DecoratedMessageHandlerFactory decoratedMessageHandlerFactory, ILoggerFactory loggerFactory,
-			IServiceScopeFactory serviceScopeFactory)
+			IServiceScopeFactory serviceScopeFactory, IJsonMapper jsonMapper)
 		{
 			_bootstrapServers = bootstrapServers;
 			_eventuateKafkaConsumerConfigurationProperties = eventuateKafkaConsumerConfigurationProperties;
 			_decoratedMessageHandlerFactory = decoratedMessageHandlerFactory;
 			_loggerFactory = loggerFactory;
 			_serviceScopeFactory = serviceScopeFactory;
+			_jsonMapper = jsonMapper;
 			_logger = _loggerFactory.CreateLogger<KafkaMessageConsumer>();
 		}
 
@@ -157,9 +159,9 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 			}
 		}
 		
-		private IMessage ToMessage(ConsumeResult<string, string> record)
+		private Message ToMessage(ConsumeResult<string, string> record)
 		{
-			return JsonMapper.FromJson<Message>(record.Message.Value);
+			return _jsonMapper.FromJson<Message>(record.Message.Value);
 		}
 
 		// Following recommended standard implementation of DisposeAsync for unsealed classes

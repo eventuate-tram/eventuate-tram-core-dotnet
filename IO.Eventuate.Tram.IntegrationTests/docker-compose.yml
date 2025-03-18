@@ -1,4 +1,3 @@
-version: '3.3'
 services:
   dbsetup:
 #    The mssql-tools image seems to only have a "latest" tag, so specifying the digest here to ensure a specific version is used
@@ -88,7 +87,7 @@ services:
       EVENTUATE_CDC_PIPELINE_PIPELINE2_READER: READER1
       EVENTUATE_CDC_PIPELINE_PIPELINE2_EVENTUATEDATABASESCHEMA: schema1
   mssql:
-    image: mcr.microsoft.com/mssql/server:2017-CU20-ubuntu-16.04
+    image: mcr.microsoft.com/mssql/server:2022-CU18-ubuntu-22.04
     ports:
       - "1433:1433"
     environment:

@@ -53,10 +53,11 @@ namespace IO.Eventuate.Tram
 				var messageConsumer = provider.GetRequiredService<IMessageConsumer>();
 				var logger = provider.GetRequiredService<ILogger<DomainEventDispatcher>>();
 				var eventTypeNamingStrategy = provider.GetRequiredService<IEventTypeNamingStrategy>();
+				var jsonMapper = provider.GetRequiredService<IJsonMapper>();
 
 				var dispatcher = new DomainEventDispatcher(subscriberId,
 					async () => await domainEventHandlersFactory(provider),
-					messageConsumer, eventTypeNamingStrategy, logger);
+					messageConsumer, eventTypeNamingStrategy, jsonMapper, logger);
 
 				return dispatcher;
 			});
@@ -65,10 +66,11 @@ namespace IO.Eventuate.Tram
 		public static void AddEventuateTramSqlProducer(this IServiceCollection serviceCollection,
 			string eventuateDatabaseSchema, Action<IServiceProvider, DbContextOptionsBuilder> dbContextOptionsAction)
 		{
-			AddEventuateTramCommonSqlMessagingServices(serviceCollection, eventuateDatabaseSchema, dbContextOptionsAction);
+			serviceCollection.AddEventuateTramCommonSqlMessagingServices(eventuateDatabaseSchema, dbContextOptionsAction);
 			serviceCollection.TryAddSingleton<IIdGenerator, IdGenerator>();
 			serviceCollection.TryAddSingleton<ITimingProvider, TimingProvider>();
 			serviceCollection.TryAddScoped<IMessageProducer, DatabaseMessageProducer>();
+			serviceCollection.AddEventuateTramJsonMapper();
 		}
 
 		private static void AddEventuateTramCommonSqlMessagingServices(
@@ -93,10 +95,11 @@ namespace IO.Eventuate.Tram
 				var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
 				var serviceScopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
 				var decoratedMessageHandlerFactory = provider.GetRequiredService<DecoratedMessageHandlerFactory>(); 
+				var jsonMapper = provider.GetRequiredService<IJsonMapper>();
 
 				IMessageConsumer messageConsumer = new KafkaMessageConsumer(bootstrapServers,
 					consumerConfigurationProperties, decoratedMessageHandlerFactory,
-					loggerFactory, serviceScopeFactory);
+					loggerFactory, serviceScopeFactory, jsonMapper);
 
 				return messageConsumer;
 			});
@@ -109,6 +112,12 @@ namespace IO.Eventuate.Tram
 			serviceCollection.AddSingleton<IMessageHandlerDecorator, PrePostReceiveMessageHandlerDecorator>();
 			serviceCollection.AddSingleton<IMessageHandlerDecorator, DuplicateDetectingMessageHandlerDecorator>();
 			serviceCollection.AddSingleton<IMessageHandlerDecorator, PrePostHandlerMessageHandlerDecorator>();
+			serviceCollection.AddEventuateTramJsonMapper();
+		}
+
+		private static void AddEventuateTramJsonMapper(this IServiceCollection serviceCollection)
+		{
+			serviceCollection.TryAddSingleton<IJsonMapper, SystemTextJsonMapper>();
 		}
 	}
 }

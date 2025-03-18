@@ -19,12 +19,14 @@ namespace IO.Eventuate.Tram.Events.Publisher
 		private readonly ILogger _logger;
 		private readonly IMessageProducer _messageProducer;
 		private readonly IEventTypeNamingStrategy _eventTypeNamingStrategy;
+		private readonly IJsonMapper _jsonMapper;
 
 		public DomainEventPublisher(IMessageProducer messageProducer, IEventTypeNamingStrategy eventTypeNamingStrategy,
-			ILogger<DomainEventPublisher> logger)
+			IJsonMapper jsonMapper, ILogger<DomainEventPublisher> logger)
 		{
 			_messageProducer = messageProducer;
 			_eventTypeNamingStrategy = eventTypeNamingStrategy;
+			_jsonMapper = jsonMapper;
 			_logger = logger;
 		}
 		
@@ -43,7 +45,7 @@ namespace IO.Eventuate.Tram.Events.Publisher
 			{
 				_messageProducer.Send(aggregateType,
 					MakeMessageForDomainEvent(aggregateType, aggregateId, headers, domainEvent,
-						_eventTypeNamingStrategy));
+						_eventTypeNamingStrategy, _jsonMapper));
 			}
 			_logger.LogDebug($"-{logContext}");
 		}
@@ -67,7 +69,7 @@ namespace IO.Eventuate.Tram.Events.Publisher
 			{
 				await _messageProducer.SendAsync(aggregateType,
 					MakeMessageForDomainEvent(aggregateType, aggregateId, headers, domainEvent,
-						_eventTypeNamingStrategy));
+						_eventTypeNamingStrategy, _jsonMapper));
 			}
 			_logger.LogDebug($"-{logContext}");
 		}
@@ -78,12 +80,13 @@ namespace IO.Eventuate.Tram.Events.Publisher
 		}
 
 		public static IMessage MakeMessageForDomainEvent(string aggregateType, object aggregateId,
-			IDictionary<string, string> headers, IDomainEvent @event, IEventTypeNamingStrategy eventTypeNamingStrategy)
+			IDictionary<string, string> headers, IDomainEvent @event, IEventTypeNamingStrategy eventTypeNamingStrategy,
+			IJsonMapper jsonMapper)
 		{
 			string aggregateIdAsString = aggregateId.ToString();
 			string eventType = eventTypeNamingStrategy.GetEventTypeName(@event.GetType());
 			return MessageBuilder
-				.WithPayload(JsonMapper.ToJson(@event))
+				.WithPayload(jsonMapper.ToJson(@event))
 				.WithExtraHeaders("", headers)
 				.WithHeader(MessageHeaders.PartitionId, aggregateIdAsString)
 				.WithHeader(EventMessageHeaders.AggregateId, aggregateIdAsString)

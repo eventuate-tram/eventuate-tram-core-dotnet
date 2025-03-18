@@ -24,6 +24,7 @@ namespace IO.Eventuate.Tram.Messaging.Producer.Database
 		private readonly IIdGenerator _idGenerator;
 
 		private readonly IEventuateTramDbContextProvider _dbContextProvider;
+		private readonly IJsonMapper _jsonMapper;
 
 		/// <summary>
 		/// Construct an OutboxMessageProducer
@@ -32,14 +33,16 @@ namespace IO.Eventuate.Tram.Messaging.Producer.Database
 		/// after sending the message to outbox</param>
 		/// <param name="idGenerator">Function to use for generating keys</param>
 		/// <param name="dbContextProvider">DbContext provider used to provide persistence to the outbox</param>
+		/// <param name="jsonMapper">JSON mapper</param>
 		/// <param name="logger">Logger for diagnostic messages</param>
 		public DatabaseMessageProducer(IEnumerable<IMessageInterceptor> messageInterceptors,
 			IIdGenerator idGenerator, IEventuateTramDbContextProvider dbContextProvider,
-			ILogger<DatabaseMessageProducer> logger)
+			IJsonMapper jsonMapper, ILogger<DatabaseMessageProducer> logger)
 			: base(messageInterceptors, logger)
 		{
 			_idGenerator = idGenerator;
 			_dbContextProvider = dbContextProvider;
+			_jsonMapper = jsonMapper;
 		}
 		
 		/// <summary>
@@ -73,7 +76,7 @@ namespace IO.Eventuate.Tram.Messaging.Producer.Database
 		void IMessageSender.Send(IMessage message)
 		{
 			// Relies on database column default value to set creation_time
-			var messageEntity = new Message(message);
+			var messageEntity = new Message(message, _jsonMapper);
 			using (EventuateTramDbContext dbContext = _dbContextProvider.CreateDbContext())
 			{
 				dbContext.Messages.Add(messageEntity);
@@ -84,7 +87,7 @@ namespace IO.Eventuate.Tram.Messaging.Producer.Database
 		public async Task SendAsync(IMessage message)
 		{
 			// Relies on database column default value to set creation_time
-			var messageEntity = new Message(message);
+			var messageEntity = new Message(message, _jsonMapper);
 			await using (EventuateTramDbContext dbContext = _dbContextProvider.CreateDbContext())
 			{
 				dbContext.Messages.Add(messageEntity);

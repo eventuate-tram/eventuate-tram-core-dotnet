@@ -9,11 +9,11 @@ namespace IO.Eventuate.Tram.Messaging.Producer.Database
 			
 		}
 		
-		public Message(IMessage message)
+		public Message(IMessage message, IJsonMapper jsonMapper)
 		{
 			Id = message.Id;
 			Destination = message.GetRequiredHeader(MessageHeaders.Destination);
-			Headers = JsonMapper.ToJson(message.Headers);
+			Headers = jsonMapper.ToJson(message.Headers);
 			Payload = message.Payload;
 		}
 		
