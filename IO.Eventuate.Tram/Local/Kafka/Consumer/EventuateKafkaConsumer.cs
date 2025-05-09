@@ -117,7 +117,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 				}
 
 				List<string> topicsList = new List<string>(_topics);
-				_logger.LogDebug($"{logContext}: Subscribing to topics='{String.Join(",", topicsList)}'");
+				_logger.LogInformation($"{logContext}: Subscribing to topics='{String.Join(",", topicsList)}'");
 
 				consumer.Subscribe(topicsList);
 
@@ -156,24 +156,30 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 								{
 									topicPartitions.Add(new TopicPartition(record.Topic, record.Partition));
 								}
+
 								BackPressureActions actions = backPressureManager.Update(topicPartitions, backlog);
 
 								if (actions.PartitionsToPause.Any())
 								{
 									_logger.LogInformation($"{logContext}: subscriber {_subscriberId} pausing " +
-										$"{string.Join(", ", actions.PartitionsToPause)} due to backlog {backlog} > {_backPressureConfig.PauseThreshold}");
+									                       $"{string.Join(", ", actions.PartitionsToPause)} due to backlog {backlog} > {_backPressureConfig.PauseThreshold}");
 									consumer.Pause(actions.PartitionsToPause);
 								}
+
 								if (actions.PartitionsToResume.Any())
 								{
 									_logger.LogInformation($"{logContext}: subscriber {_subscriberId} resuming " +
-										$"{string.Join(", ", actions.PartitionsToResume)} due to backlog {backlog} <= {_backPressureConfig.ResumeThreshold}");
+									                       $"{string.Join(", ", actions.PartitionsToResume)} due to backlog {backlog} <= {_backPressureConfig.ResumeThreshold}");
 									consumer.Resume(actions.PartitionsToResume);
 								}
 							}
 							catch (ConsumeException e)
 							{
-								_logger.LogError($"{logContext}: ConsumeException - {e.Error}. Continuing.");
+								_logger.LogError(e, $"{logContext}: ConsumeException - {e.Error}. Continuing.");
+							}
+							catch (KafkaException e)
+							{
+								_logger.LogError(e, $"{logContext}: KafkaException - {e.Error}. Continuing.");
 							}
 						}
 
@@ -209,7 +215,15 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 						// callbacks are done asynchronously so there is no guarantee
 						// that all the offsets are ready. Worst case is that there
 						// are messages processed more than once.
-						MaybeCommitOffsets(consumer, processor);
+						try
+						{
+							MaybeCommitOffsets(consumer, processor);
+						}
+						catch (KafkaException e)
+						{
+							_logger.LogError(e, $"{logContext}: Error committing last offsets");
+						}
+						
 						consumer.Close();
 						consumer.Dispose();
 						
