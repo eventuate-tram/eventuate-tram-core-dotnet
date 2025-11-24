@@ -57,9 +57,9 @@ namespace IO.Eventuate.Tram.UnitTests.Consumer.Database
 				new[]
 				{
 					typeof (int), typeof (byte), typeof (byte), typeof (string), typeof(string), typeof (string),
-					typeof (int), typeof (uint), typeof (Exception)
+					typeof (int), typeof (int), typeof (Exception)
 				}, null);
-			var error = errorConstructor.Invoke(new object[] { number, (byte)0, (byte)0, "server", message, "procedure", 100, (uint)0, null });
+			var error = errorConstructor.Invoke(new object[] { number, (byte)0, (byte)0, "server", message, "procedure", 100, 0, null });
 			addMethod.Invoke(errorCollection, new[] { error });
 			var constructor = typeof(SqlException).GetConstructor(BindingFlags.NonPublic | BindingFlags.Instance, //visibility
 				null, //binder

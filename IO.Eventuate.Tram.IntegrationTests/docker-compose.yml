@@ -15,7 +15,7 @@ services:
     working_dir: /scripts
     entrypoint: [ "bash", "./entrypoint.sh" ]
   eventuatetramtests:
-    image: mcr.microsoft.com/dotnet/sdk:8.0
+    image: mcr.microsoft.com/dotnet/sdk:10.0
     depends_on:
     - zookeeper
     - kafka
@@ -25,7 +25,7 @@ services:
       KafkaBootstrapServers: "kafka:29092"
       ConnectionStrings__EventuateTramDbConnection: "Server=mssql;Database=TramDb;User Id=sa;Password=TestPa55word;TrustServerCertificate=True"
     volumes:
-    - ./bin/Release/net8.0:/app
+    - ./bin/Release/net10.0:/app
     working_dir: /app
     entrypoint: [ "dotnet", "test", "IO.Eventuate.Tram.IntegrationTests.dll", "--verbosity", "normal", "--logger", "trx" ]
   zookeeper:
