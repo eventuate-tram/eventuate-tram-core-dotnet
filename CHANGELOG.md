@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - ???
 
+### Added
+- Swimlane mapping, ported from the Java implementation: register an `ITopicPartitionToSwimlaneMapping` to choose how a
+  subscriber's messages are assigned to swimlanes. `OriginalTopicPartitionToSwimlaneMapping` (one swimlane per
+  partition number) is the default, as before; `SwimlanePerTopicPartition` gives each topic partition its own swimlane,
+  so one topic's messages don't wait behind another's
+- `BackPressure.Scope` consumer configuration property: `Topic` applies the back pressure thresholds to each topic on its
+  own, pausing and resuming only that topic's partitions. `AllPartitions` (all of the consumer's partitions together) is
+  the default, as before
+
+### Fixed
+- A Kafka consumer disposed before its consume loop had started was never closed, and disposing it threw
+  `TaskCanceledException`
+
 ## [0.7.0] - 2025-12-05
 
 ### Changed
