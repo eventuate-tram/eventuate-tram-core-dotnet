@@ -154,6 +154,8 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 				_state = EventuateKafkaConsumerState.Started;
 
 				// ReSharper disable AccessToDisposedClosure - consumer is disposed outside of the closure only if the closure doesn't execute
+				// No cancellation token: if the consumer was disposed before the task started, the loop wouldn't run,
+				// so the consumer would never be closed. The loop checks for cancellation itself.
 				_consumeTask = Task.Run(async () =>
 				{
 					try
@@ -253,7 +255,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 						
 						_logger.LogDebug($"{logContext}: Stopped in state {_state.ToString()}");
 					}
-				}, _cancellationTokenSource.Token);
+				});
 				// ReSharper restore AccessToDisposedClosure
 			}
 			catch (Exception e)
