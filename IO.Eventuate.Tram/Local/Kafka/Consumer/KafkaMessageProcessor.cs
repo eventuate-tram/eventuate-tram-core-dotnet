@@ -33,6 +33,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 		private volatile KafkaMessageProcessorFailedException _failed;
 
 		private readonly HashSet<IMessageConsumerBacklog> _consumerBacklogs = new();
+		private readonly Dictionary<string, HashSet<IMessageConsumerBacklog>> _consumerBacklogsByTopic = new();
 
 		public KafkaMessageProcessor(string subscriberId,
 			EventuateKafkaConsumerMessageHandler handler,
@@ -69,6 +70,13 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 			if (consumerBacklog != null)
 			{
 				_consumerBacklogs.Add(consumerBacklog);
+				if (!_consumerBacklogsByTopic.TryGetValue(record.Topic, out HashSet<IMessageConsumerBacklog> topicBacklogs))
+				{
+					topicBacklogs = new HashSet<IMessageConsumerBacklog>();
+					_consumerBacklogsByTopic[record.Topic] = topicBacklogs;
+				}
+
+				topicBacklogs.Add(consumerBacklog);
 			}
 			
 			_logger.LogDebug($"-{logContext}");
@@ -122,6 +130,24 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 		public int GetBacklog()
 		{
 			return _consumerBacklogs.Sum(cb => cb.Size());
+		}
+
+		/// <summary>
+		/// The backlog of the swimlanes the topic's records were dispatched to
+		/// </summary>
+		public int GetBacklog(string topic)
+		{
+			return _consumerBacklogsByTopic.TryGetValue(topic, out HashSet<IMessageConsumerBacklog> topicBacklogs)
+				? topicBacklogs.Sum(cb => cb.Size())
+				: 0;
+		}
+
+		/// <summary>
+		/// The topics that records have been processed from
+		/// </summary>
+		public IReadOnlyCollection<string> GetTopics()
+		{
+			return _consumerBacklogsByTopic.Keys;
 		}
 	}
 }

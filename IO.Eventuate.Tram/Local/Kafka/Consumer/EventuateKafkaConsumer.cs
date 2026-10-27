@@ -84,6 +84,32 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 			}
 		}
 
+		private void ApplyBackPressure(IConsumer<string, string> consumer, BackPressureManager backPressureManager,
+			ConsumeResult<string, string> record, int backlog, string logContext)
+		{
+			var topicPartitions = new HashSet<TopicPartition>();
+			if (record != null)
+			{
+				topicPartitions.Add(new TopicPartition(record.Topic, record.Partition));
+			}
+
+			BackPressureActions actions = backPressureManager.Update(topicPartitions, backlog);
+
+			if (actions.PartitionsToPause.Any())
+			{
+				_logger.LogInformation($"{logContext}: subscriber {_subscriberId} pausing " +
+				                       $"{string.Join(", ", actions.PartitionsToPause)} due to backlog {backlog} > {_backPressureConfig.PauseThreshold}");
+				consumer.Pause(actions.PartitionsToPause);
+			}
+
+			if (actions.PartitionsToResume.Any())
+			{
+				_logger.LogInformation($"{logContext}: subscriber {_subscriberId} resuming " +
+				                       $"{string.Join(", ", actions.PartitionsToResume)} due to backlog {backlog} <= {_backPressureConfig.ResumeThreshold}");
+				consumer.Resume(actions.PartitionsToResume);
+			}
+		}
+
 		private void MaybeCommitOffsets(IConsumer<string, string> consumer, KafkaMessageProcessor processor)
 		{
 			var logContext = $"{nameof(MaybeCommitOffsets)} for SubscriberId='{_subscriberId}'";
@@ -107,6 +133,8 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 				var processor = new KafkaMessageProcessor(_subscriberId, _handler,
 					_loggerFactory.CreateLogger<KafkaMessageProcessor>());
 				var backPressureManager = new BackPressureManager(_backPressureConfig);
+				// Only used for BackPressureScope.Topic
+				var backPressureManagersByTopic = new Dictionary<string, BackPressureManager>();
 
 				using (IAdminClient adminClient = new DependentAdminClientBuilder(consumer.Handle).Build())
 				{
@@ -150,27 +178,23 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 
 								MaybeCommitOffsets(consumer, processor);
 
-								int backlog = processor.GetBacklog();
-								var topicPartitions = new HashSet<TopicPartition>();
-								if (record != null)
+								if (_backPressureConfig.Scope == BackPressureScope.Topic)
 								{
-									topicPartitions.Add(new TopicPartition(record.Topic, record.Partition));
+									foreach (string topic in processor.GetTopics())
+									{
+										if (!backPressureManagersByTopic.TryGetValue(topic, out BackPressureManager topicBackPressureManager))
+										{
+											topicBackPressureManager = new BackPressureManager(_backPressureConfig);
+											backPressureManagersByTopic[topic] = topicBackPressureManager;
+										}
+
+										ApplyBackPressure(consumer, topicBackPressureManager, record?.Topic == topic ? record : null,
+											processor.GetBacklog(topic), logContext);
+									}
 								}
-
-								BackPressureActions actions = backPressureManager.Update(topicPartitions, backlog);
-
-								if (actions.PartitionsToPause.Any())
+								else
 								{
-									_logger.LogInformation($"{logContext}: subscriber {_subscriberId} pausing " +
-									                       $"{string.Join(", ", actions.PartitionsToPause)} due to backlog {backlog} > {_backPressureConfig.PauseThreshold}");
-									consumer.Pause(actions.PartitionsToPause);
-								}
-
-								if (actions.PartitionsToResume.Any())
-								{
-									_logger.LogInformation($"{logContext}: subscriber {_subscriberId} resuming " +
-									                       $"{string.Join(", ", actions.PartitionsToResume)} due to backlog {backlog} <= {_backPressureConfig.ResumeThreshold}");
-									consumer.Resume(actions.PartitionsToResume);
+									ApplyBackPressure(consumer, backPressureManager, record, processor.GetBacklog(), logContext);
 								}
 							}
 							catch (ConsumeException e)
