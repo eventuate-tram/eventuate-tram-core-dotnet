@@ -28,6 +28,7 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 		private readonly ILoggerFactory _loggerFactory;
 		private readonly IServiceScopeFactory _serviceScopeFactory;
 		private readonly IJsonMapper _jsonMapper;
+		private readonly ITopicPartitionToSwimlaneMapping _swimlaneMapping;
 
 		private readonly string _id = Guid.NewGuid().ToString();
 		private readonly string _bootstrapServers;
@@ -38,7 +39,8 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 		public KafkaMessageConsumer(string bootstrapServers,
 			EventuateKafkaConsumerConfigurationProperties eventuateKafkaConsumerConfigurationProperties,
 			DecoratedMessageHandlerFactory decoratedMessageHandlerFactory, ILoggerFactory loggerFactory,
-			IServiceScopeFactory serviceScopeFactory, IJsonMapper jsonMapper)
+			IServiceScopeFactory serviceScopeFactory, IJsonMapper jsonMapper,
+			ITopicPartitionToSwimlaneMapping swimlaneMapping = null)
 		{
 			_bootstrapServers = bootstrapServers;
 			_eventuateKafkaConsumerConfigurationProperties = eventuateKafkaConsumerConfigurationProperties;
@@ -46,6 +48,7 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 			_loggerFactory = loggerFactory;
 			_serviceScopeFactory = serviceScopeFactory;
 			_jsonMapper = jsonMapper;
+			_swimlaneMapping = swimlaneMapping ?? new OriginalTopicPartitionToSwimlaneMapping();
 			_logger = _loggerFactory.CreateLogger<KafkaMessageConsumer>();
 		}
 
@@ -58,10 +61,10 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 			
 			Func<SubscriberIdAndMessage, IServiceProvider, CancellationToken, Task> decoratedHandler = _decoratedMessageHandlerFactory.Decorate(handler);
 			
-			var swimLaneBasedDispatcher = new SwimlaneBasedDispatcher(subscriberId, _loggerFactory);
+			var swimLaneBasedDispatcher = new SwimlaneBasedDispatcher(subscriberId, _loggerFactory, _swimlaneMapping);
 
 			EventuateKafkaConsumerMessageHandler kcHandler =
-				async (record, completionCallback) => await swimLaneBasedDispatcher.DispatchAsync(ToMessage(record), record.Partition,
+				async (record, completionCallback) => await swimLaneBasedDispatcher.DispatchAsync(ToMessage(record), record.TopicPartition, record.Message.Key,
 					(message, cancellationToken) => HandleAsync(message, completionCallback, subscriberId, decoratedHandler, cancellationToken));
 			
 			var kc = new EventuateKafkaConsumer(subscriberId,

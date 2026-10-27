@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
+using Confluent.Kafka;
 using IO.Eventuate.Tram.Messaging.Common;
 using Microsoft.Extensions.Logging;
 
@@ -16,13 +17,30 @@ namespace IO.Eventuate.Tram.Consumer.Kafka
 		private readonly ILoggerFactory _loggerFactory;
 		private readonly ILogger _logger;
 		private readonly string _dispatcherContext;
+		private readonly ITopicPartitionToSwimlaneMapping _swimlaneMapping;
 
 		public SwimlaneBasedDispatcher(string subscriberId, ILoggerFactory loggerFactory)
+			: this(subscriberId, loggerFactory, new OriginalTopicPartitionToSwimlaneMapping())
+		{
+		}
+
+		public SwimlaneBasedDispatcher(string subscriberId, ILoggerFactory loggerFactory,
+			ITopicPartitionToSwimlaneMapping swimlaneMapping)
 		{
 			_subscriberId = subscriberId;
 			_loggerFactory = loggerFactory;
+			_swimlaneMapping = swimlaneMapping;
 			_logger = _loggerFactory.CreateLogger<SwimlaneBasedDispatcher>();
 			_dispatcherContext = $"SubscriberId='{subscriberId}'";
+		}
+
+		/// <summary>
+		/// Dispatch a message received on a topic partition to the swimlane the swimlane mapping gives it
+		/// </summary>
+		public Task<SwimlaneDispatcherBacklog> DispatchAsync(IMessage message, TopicPartition topicPartition,
+			string messageKey, Func<IMessage, CancellationToken, Task> target)
+		{
+			return DispatchAsync(message, _swimlaneMapping.ToSwimlane(topicPartition, messageKey), target);
 		}
 
 		public async Task<SwimlaneDispatcherBacklog> DispatchAsync(IMessage message, int swimlane, Func<IMessage, CancellationToken, Task> target)
