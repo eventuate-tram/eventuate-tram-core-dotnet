@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   own, pausing and resuming only that topic's partitions, and gives each topic partition its own swimlane unless another
   mapping is registered. `AllPartitions` (all of the consumer's partitions together) is the default, as before
 
+### Changed
+- `AllPartitions` back pressure now pauses all of the consumer's assigned partitions, including ones that haven't
+  delivered a message yet; before, it paused only the partitions it had received messages from
+
 ### Fixed
 - A Kafka consumer disposed before its consume loop had started was never closed, and disposing it threw
   `TaskCanceledException`

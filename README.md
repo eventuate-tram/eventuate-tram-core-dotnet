@@ -99,6 +99,9 @@ subscription, so register one that keeps state, such as `SwimlanePerTopicPartiti
 services.AddTransient<ITopicPartitionToSwimlaneMapping, SwimlanePerTopicPartition>();
 ```
 
+The mapping is resolved from the root service provider, so register it as transient or singleton; scoped isn't
+supported.
+
 ### Database Setup
 You need to run the [database initialization script](IO.Eventuate.Tram/Database/mssql/initialize-database.sql),
 modifying the database schema $(TRAM_SCHEMA) variable to match what you configured. 
