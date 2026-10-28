@@ -138,7 +138,6 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 			// The managers are given the assigned partitions only when they change, so a partition assigned while
 			// its manager is paused gets paused too.
 			bool assignmentChanged = _assignmentChanged;
-			_assignmentChanged = false;
 
 			if (_backPressureConfig.Scope == BackPressureScope.Topic)
 			{
@@ -164,6 +163,10 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 				ApplyBackPressure(consumer, _backPressureManager, assignmentChanged ? _assignedPartitions : NoTopicPartitions,
 					processor.GetBacklog(), "backlog", logContext);
 			}
+
+			// Only once every manager has it: if pausing or resuming throws partway through, the next poll gives the
+			// assignment to them all again, which is harmless for those that already have it.
+			_assignmentChanged = false;
 		}
 
 		private void ApplyBackPressure(IConsumer<string, string> consumer, BackPressureManager backPressureManager,
