@@ -6,4 +6,5 @@ public class BackPressureConfig
 {
 	public uint ResumeThreshold { get; set; } = 0;
 	public uint PauseThreshold { get; set; } = uint.MaxValue;
+	public BackPressureScope Scope { get; set; } = BackPressureScope.AllPartitions;
 }

@@ -38,6 +38,16 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 
 		private volatile EventuateKafkaConsumerState _state = EventuateKafkaConsumerState.Created;
 
+		private static readonly ISet<TopicPartition> NoTopicPartitions = new HashSet<TopicPartition>();
+
+		// Back pressure state. Only used on the consume loop's thread: Consume() calls the rebalance handlers there.
+		private readonly BackPressureManager _backPressureManager;
+		private readonly Dictionary<string, BackPressureManager> _backPressureManagersByTopic = new();
+		private readonly Dictionary<string, int> _backlogsByTopic = new();
+		private readonly HashSet<TopicPartition> _assignedPartitions = new();
+		private readonly Dictionary<string, HashSet<TopicPartition>> _assignedPartitionsByTopic = new();
+		private bool _assignmentChanged;
+
 		private Task _consumeTask;
 
 		public EventuateKafkaConsumer(string subscriberId,
@@ -54,6 +64,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 			_pollTimeout = eventuateKafkaConsumerConfigurationProperties.PollTimeout;
 			_loggerFactory = loggerFactory;
 			_logger = loggerFactory.CreateLogger<EventuateKafkaConsumer>();
+			_backPressureManager = new BackPressureManager(_backPressureConfig);
 
 			_consumerProperties =
 				ConsumerPropertiesFactory.MakeDefaultConsumerProperties(bootstrapServers, subscriberId)
@@ -84,6 +95,100 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 			}
 		}
 
+		private void NotePartitionsAssigned(IEnumerable<TopicPartition> partitions)
+		{
+			foreach (TopicPartition partition in partitions)
+			{
+				_assignedPartitions.Add(partition);
+				if (!_assignedPartitionsByTopic.TryGetValue(partition.Topic, out HashSet<TopicPartition> topicPartitions))
+				{
+					topicPartitions = [];
+					_assignedPartitionsByTopic[partition.Topic] = topicPartitions;
+				}
+
+				topicPartitions.Add(partition);
+			}
+
+			_assignmentChanged = true;
+		}
+
+		private void NotePartitionsRevoked(IEnumerable<TopicPartition> partitions)
+		{
+			List<TopicPartition> revoked = partitions.ToList();
+			_assignedPartitions.ExceptWith(revoked);
+			_backPressureManager.RemovePartitions(revoked);
+			foreach (IGrouping<string, TopicPartition> topicPartitions in revoked.GroupBy(p => p.Topic))
+			{
+				if (_assignedPartitionsByTopic.TryGetValue(topicPartitions.Key, out HashSet<TopicPartition> assigned))
+				{
+					assigned.ExceptWith(topicPartitions);
+				}
+
+				if (_backPressureManagersByTopic.TryGetValue(topicPartitions.Key, out BackPressureManager topicBackPressureManager))
+				{
+					topicBackPressureManager.RemovePartitions(topicPartitions);
+				}
+			}
+
+			_assignmentChanged = true;
+		}
+
+		private void ApplyBackPressure(IConsumer<string, string> consumer, KafkaMessageProcessor processor, string logContext)
+		{
+			// The managers are given the assigned partitions only when they change, so a partition assigned while
+			// its manager is paused gets paused too.
+			bool assignmentChanged = _assignmentChanged;
+
+			if (_backPressureConfig.Scope == BackPressureScope.Topic)
+			{
+				processor.GetBacklogByTopic(_backlogsByTopic);
+				foreach ((string topic, int backlog) in _backlogsByTopic)
+				{
+					bool newTopic = !_backPressureManagersByTopic.TryGetValue(topic, out BackPressureManager topicBackPressureManager);
+					if (newTopic)
+					{
+						topicBackPressureManager = new BackPressureManager(_backPressureConfig);
+						_backPressureManagersByTopic[topic] = topicBackPressureManager;
+					}
+
+					ISet<TopicPartition> partitions = (assignmentChanged || newTopic) &&
+					                                  _assignedPartitionsByTopic.TryGetValue(topic, out HashSet<TopicPartition> assigned)
+						? assigned
+						: NoTopicPartitions;
+					ApplyBackPressure(consumer, topicBackPressureManager, partitions, backlog, $"topic {topic}'s backlog", logContext);
+				}
+			}
+			else
+			{
+				ApplyBackPressure(consumer, _backPressureManager, assignmentChanged ? _assignedPartitions : NoTopicPartitions,
+					processor.GetBacklog(), "backlog", logContext);
+			}
+
+			// Only once every manager has it: if pausing or resuming throws partway through, the next poll gives the
+			// assignment to them all again, which is harmless for those that already have it.
+			_assignmentChanged = false;
+		}
+
+		private void ApplyBackPressure(IConsumer<string, string> consumer, BackPressureManager backPressureManager,
+			ISet<TopicPartition> assignedPartitions, int backlog, string backlogDescription, string logContext)
+		{
+			BackPressureActions actions = backPressureManager.Update(assignedPartitions, backlog);
+
+			if (actions.PartitionsToPause.Any())
+			{
+				_logger.LogInformation($"{logContext}: subscriber {_subscriberId} pausing " +
+				                       $"{string.Join(", ", actions.PartitionsToPause)} due to {backlogDescription} {backlog} > {_backPressureConfig.PauseThreshold}");
+				consumer.Pause(actions.PartitionsToPause);
+			}
+
+			if (actions.PartitionsToResume.Any())
+			{
+				_logger.LogInformation($"{logContext}: subscriber {_subscriberId} resuming " +
+				                       $"{string.Join(", ", actions.PartitionsToResume)} due to {backlogDescription} {backlog} <= {_backPressureConfig.ResumeThreshold}");
+				consumer.Resume(actions.PartitionsToResume);
+			}
+		}
+
 		private void MaybeCommitOffsets(IConsumer<string, string> consumer, KafkaMessageProcessor processor)
 		{
 			var logContext = $"{nameof(MaybeCommitOffsets)} for SubscriberId='{_subscriberId}'";
@@ -103,10 +208,12 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 			IConsumer<string, string> consumer = null;
 			try
 			{
-				consumer = new ConsumerBuilder<string, string>(_consumerProperties).Build();
+				consumer = new ConsumerBuilder<string, string>(_consumerProperties)
+					.SetPartitionsAssignedHandler((_, partitions) => NotePartitionsAssigned(partitions))
+					.SetPartitionsRevokedHandler((_, partitions) => NotePartitionsRevoked(partitions.Select(p => p.TopicPartition)))
+					.Build();
 				var processor = new KafkaMessageProcessor(_subscriberId, _handler,
 					_loggerFactory.CreateLogger<KafkaMessageProcessor>());
-				var backPressureManager = new BackPressureManager(_backPressureConfig);
 
 				using (IAdminClient adminClient = new DependentAdminClientBuilder(consumer.Handle).Build())
 				{
@@ -126,6 +233,8 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 				_state = EventuateKafkaConsumerState.Started;
 
 				// ReSharper disable AccessToDisposedClosure - consumer is disposed outside of the closure only if the closure doesn't execute
+				// No cancellation token: if the consumer was disposed before the task started, the loop wouldn't run,
+				// so the consumer would never be closed. The loop checks for cancellation itself.
 				_consumeTask = Task.Run(async () =>
 				{
 					try
@@ -150,28 +259,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 
 								MaybeCommitOffsets(consumer, processor);
 
-								int backlog = processor.GetBacklog();
-								var topicPartitions = new HashSet<TopicPartition>();
-								if (record != null)
-								{
-									topicPartitions.Add(new TopicPartition(record.Topic, record.Partition));
-								}
-
-								BackPressureActions actions = backPressureManager.Update(topicPartitions, backlog);
-
-								if (actions.PartitionsToPause.Any())
-								{
-									_logger.LogInformation($"{logContext}: subscriber {_subscriberId} pausing " +
-									                       $"{string.Join(", ", actions.PartitionsToPause)} due to backlog {backlog} > {_backPressureConfig.PauseThreshold}");
-									consumer.Pause(actions.PartitionsToPause);
-								}
-
-								if (actions.PartitionsToResume.Any())
-								{
-									_logger.LogInformation($"{logContext}: subscriber {_subscriberId} resuming " +
-									                       $"{string.Join(", ", actions.PartitionsToResume)} due to backlog {backlog} <= {_backPressureConfig.ResumeThreshold}");
-									consumer.Resume(actions.PartitionsToResume);
-								}
+								ApplyBackPressure(consumer, processor, logContext);
 							}
 							catch (ConsumeException e)
 							{
@@ -229,7 +317,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 						
 						_logger.LogDebug($"{logContext}: Stopped in state {_state.ToString()}");
 					}
-				}, _cancellationTokenSource.Token);
+				});
 				// ReSharper restore AccessToDisposedClosure
 			}
 			catch (Exception e)

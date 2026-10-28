@@ -18,6 +18,14 @@ public class BackPressureManagerPausedState : IBackPressureManagerState
 			new BackPressureManagerPausedState(allTopicPartitions));
 	}
 
+	/// <summary>
+	/// Forget suspended partitions the consumer no longer owns, so they aren't resumed
+	/// </summary>
+	public void RemovePartitions(IEnumerable<TopicPartition> topicPartitions)
+	{
+		_suspendedPartitions.ExceptWith(topicPartitions);
+	}
+
 	public BackPressureManagerStateAndActions Update(ISet<TopicPartition> allTopicPartitions, int backlog,
 		BackPressureConfig backPressureConfig)
 	{

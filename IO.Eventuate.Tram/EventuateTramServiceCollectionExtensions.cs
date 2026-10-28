@@ -99,7 +99,8 @@ namespace IO.Eventuate.Tram
 
 				IMessageConsumer messageConsumer = new KafkaMessageConsumer(bootstrapServers,
 					consumerConfigurationProperties, decoratedMessageHandlerFactory,
-					loggerFactory, serviceScopeFactory, jsonMapper);
+					loggerFactory, serviceScopeFactory, jsonMapper,
+					() => provider.GetService<ITopicPartitionToSwimlaneMapping>());
 
 				return messageConsumer;
 			});

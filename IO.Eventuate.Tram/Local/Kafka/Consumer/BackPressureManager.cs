@@ -23,4 +23,17 @@ public class BackPressureManager
 		_state = stateAndActions.State;
 		return stateAndActions.Actions;
 	}
+
+	/// <summary>
+	/// Forget partitions the consumer no longer owns (e.g. revoked in a rebalance), so they aren't paused or resumed
+	/// </summary>
+	public void RemovePartitions(IEnumerable<TopicPartition> topicPartitions)
+	{
+		var removed = new HashSet<TopicPartition>(topicPartitions);
+		_allTopicPartitions.ExceptWith(removed);
+		if (_state is BackPressureManagerPausedState pausedState)
+		{
+			pausedState.RemovePartitions(removed);
+		}
+	}
 }

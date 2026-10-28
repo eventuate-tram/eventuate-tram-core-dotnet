@@ -33,6 +33,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 		private volatile KafkaMessageProcessorFailedException _failed;
 
 		private readonly HashSet<IMessageConsumerBacklog> _consumerBacklogs = new();
+		private readonly Dictionary<string, HashSet<IMessageConsumerBacklog>> _consumerBacklogsByTopic = new();
 
 		public KafkaMessageProcessor(string subscriberId,
 			EventuateKafkaConsumerMessageHandler handler,
@@ -69,6 +70,13 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 			if (consumerBacklog != null)
 			{
 				_consumerBacklogs.Add(consumerBacklog);
+				if (!_consumerBacklogsByTopic.TryGetValue(record.Topic, out HashSet<IMessageConsumerBacklog> topicBacklogs))
+				{
+					topicBacklogs = [];
+					_consumerBacklogsByTopic[record.Topic] = topicBacklogs;
+				}
+
+				topicBacklogs.Add(consumerBacklog);
 			}
 			
 			_logger.LogDebug($"-{logContext}");
@@ -122,6 +130,25 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 		public int GetBacklog()
 		{
 			return _consumerBacklogs.Sum(cb => cb.Size());
+		}
+
+		/// <summary>
+		/// Fills <paramref name="backlogs"/> with the backlog of each topic records have been processed from, that is
+		/// of the swimlanes its records were dispatched to. It's cleared first, so the caller can reuse one dictionary.
+		/// </summary>
+		public void GetBacklogByTopic(IDictionary<string, int> backlogs)
+		{
+			backlogs.Clear();
+			foreach ((string topic, HashSet<IMessageConsumerBacklog> topicBacklogs) in _consumerBacklogsByTopic)
+			{
+				int backlog = 0;
+				foreach (IMessageConsumerBacklog consumerBacklog in topicBacklogs)
+				{
+					backlog += consumerBacklog.Size();
+				}
+
+				backlogs[topic] = backlog;
+			}
 		}
 	}
 }

@@ -62,6 +62,18 @@ queue exceeds the PauseThreshold and resumed once it drops back below the Resume
 *Required*: No  
 *Default Value*: 0
 
+##### `BackPressure.Scope`
+
+What the thresholds apply to. `AllPartitions` counts the unprocessed messages of all of the consumer's partitions
+together, and pauses and resumes all of them. `Topic` counts each topic's unprocessed messages on their own, and pauses
+and resumes only that topic's partitions, so one topic's backlog doesn't stop the consumer's other topics. With `Topic`,
+each topic partition gets a swimlane of its own (`SwimlanePerTopicPartition`, see [Swimlanes](#swimlanes)) unless
+another swimlane mapping is registered.
+
+*Type*: BackPressureScope (`AllPartitions` or `Topic`)  
+*Required*: No  
+*Default Value*: AllPartitions
+
 #### `Properties`
 
 A dictionary of property names and values that can be used to override the default configuration of the 
@@ -71,6 +83,24 @@ for a list of possible property names.
 *Type*: IDictionary<string, string>  
 *Required*: No  
 *Default Value*: Empty
+
+### Swimlanes
+
+A subscriber's messages are handled concurrently across swimlanes, and one at a time, in order, within a swimlane. By
+default (`OriginalTopicPartitionToSwimlaneMapping`) there is one swimlane per partition number, so partitions with the
+same number on different topics share one, and a message waiting on one topic holds up the others on that swimlane.
+When `BackPressure.Scope` is `Topic`, the default is `SwimlanePerTopicPartition` instead, which gives each topic
+partition a swimlane of its own.
+
+To choose the mapping yourself, register an `ITopicPartitionToSwimlaneMapping`. A mapping is created for each
+subscription, so register one that keeps state, such as `SwimlanePerTopicPartition`, as transient:
+
+```c#
+services.AddTransient<ITopicPartitionToSwimlaneMapping, SwimlanePerTopicPartition>();
+```
+
+The mapping is resolved from the root service provider, so register it as transient or singleton; scoped isn't
+supported.
 
 ### Database Setup
 You need to run the [database initialization script](IO.Eventuate.Tram/Database/mssql/initialize-database.sql),
