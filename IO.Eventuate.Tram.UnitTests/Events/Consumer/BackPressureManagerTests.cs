@@ -132,4 +132,37 @@ public class BackPressureManagerTests
 		// Assert
 		Assert.That(actions.PartitionsToResume, Is.EquivalentTo(new List<TopicPartition>{partition1, partition2}), "PartitionsToResume 1"); ;
 	}
+
+	[Test]
+	public void BackPressureManager_PausedPartitionRemoved_IsNotResumed()
+	{
+		// Arrange
+		BackPressureManager manager = new BackPressureManager(_config);
+		TopicPartition partition1 = new TopicPartition("topic1", new Partition(1));
+		TopicPartition partition2 = new TopicPartition("topic1", new Partition(2));
+		manager.Update(new HashSet<TopicPartition> {partition1, partition2}, (int)(_config.PauseThreshold + 1));
+
+		// Act
+		manager.RemovePartitions([partition2]);
+		BackPressureActions actions = manager.Update(new HashSet<TopicPartition>(), (int)(_config.ResumeThreshold - 1));
+
+		// Assert
+		Assert.That(actions.PartitionsToResume, Is.EquivalentTo(new List<TopicPartition>{partition1}), "PartitionsToResume");
+	}
+
+	[Test]
+	public void BackPressureManager_PartitionAddedWhilePaused_IsPaused()
+	{
+		// Arrange
+		BackPressureManager manager = new BackPressureManager(_config);
+		TopicPartition partition1 = new TopicPartition("topic1", new Partition(1));
+		TopicPartition partition2 = new TopicPartition("topic1", new Partition(2));
+		manager.Update(new HashSet<TopicPartition> {partition1}, (int)(_config.PauseThreshold + 1));
+
+		// Act
+		BackPressureActions actions = manager.Update(new HashSet<TopicPartition> {partition2}, (int)(_config.PauseThreshold + 1));
+
+		// Assert
+		Assert.That(actions.PartitionsToPause, Is.EquivalentTo(new List<TopicPartition>{partition2}), "PartitionsToPause");
+	}
 }

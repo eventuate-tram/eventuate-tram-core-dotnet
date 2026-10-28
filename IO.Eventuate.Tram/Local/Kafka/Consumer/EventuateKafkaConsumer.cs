@@ -40,10 +40,13 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 
 		private static readonly ISet<TopicPartition> NoTopicPartitions = new HashSet<TopicPartition>();
 
-		// Back pressure state. Only used on the consume loop's thread.
+		// Back pressure state. Only used on the consume loop's thread: Consume() calls the rebalance handlers there.
 		private readonly BackPressureManager _backPressureManager;
 		private readonly Dictionary<string, BackPressureManager> _backPressureManagersByTopic = new();
 		private readonly Dictionary<string, int> _backlogsByTopic = new();
+		private readonly HashSet<TopicPartition> _assignedPartitions = new();
+		private readonly Dictionary<string, HashSet<TopicPartition>> _assignedPartitionsByTopic = new();
+		private bool _assignmentChanged;
 
 		private Task _consumeTask;
 
@@ -92,38 +95,81 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 			}
 		}
 
-		private void ApplyBackPressure(IConsumer<string, string> consumer, KafkaMessageProcessor processor,
-			ConsumeResult<string, string> record, string logContext)
+		private void NotePartitionsAssigned(IEnumerable<TopicPartition> partitions)
 		{
-			ISet<TopicPartition> recordPartition = record == null
-				? NoTopicPartitions
-				: new HashSet<TopicPartition> { new TopicPartition(record.Topic, record.Partition) };
+			foreach (TopicPartition partition in partitions)
+			{
+				_assignedPartitions.Add(partition);
+				if (!_assignedPartitionsByTopic.TryGetValue(partition.Topic, out HashSet<TopicPartition> topicPartitions))
+				{
+					topicPartitions = [];
+					_assignedPartitionsByTopic[partition.Topic] = topicPartitions;
+				}
+
+				topicPartitions.Add(partition);
+			}
+
+			_assignmentChanged = true;
+		}
+
+		private void NotePartitionsRevoked(IEnumerable<TopicPartition> partitions)
+		{
+			List<TopicPartition> revoked = partitions.ToList();
+			_assignedPartitions.ExceptWith(revoked);
+			_backPressureManager.RemovePartitions(revoked);
+			foreach (IGrouping<string, TopicPartition> topicPartitions in revoked.GroupBy(p => p.Topic))
+			{
+				if (_assignedPartitionsByTopic.TryGetValue(topicPartitions.Key, out HashSet<TopicPartition> assigned))
+				{
+					assigned.ExceptWith(topicPartitions);
+				}
+
+				if (_backPressureManagersByTopic.TryGetValue(topicPartitions.Key, out BackPressureManager topicBackPressureManager))
+				{
+					topicBackPressureManager.RemovePartitions(topicPartitions);
+				}
+			}
+
+			_assignmentChanged = true;
+		}
+
+		private void ApplyBackPressure(IConsumer<string, string> consumer, KafkaMessageProcessor processor, string logContext)
+		{
+			// The managers are given the assigned partitions only when they change, so a partition assigned while
+			// its manager is paused gets paused too.
+			bool assignmentChanged = _assignmentChanged;
+			_assignmentChanged = false;
 
 			if (_backPressureConfig.Scope == BackPressureScope.Topic)
 			{
 				processor.GetBacklogByTopic(_backlogsByTopic);
 				foreach ((string topic, int backlog) in _backlogsByTopic)
 				{
-					if (!_backPressureManagersByTopic.TryGetValue(topic, out BackPressureManager topicBackPressureManager))
+					bool newTopic = !_backPressureManagersByTopic.TryGetValue(topic, out BackPressureManager topicBackPressureManager);
+					if (newTopic)
 					{
 						topicBackPressureManager = new BackPressureManager(_backPressureConfig);
 						_backPressureManagersByTopic[topic] = topicBackPressureManager;
 					}
 
-					ApplyBackPressure(consumer, topicBackPressureManager, record?.Topic == topic ? recordPartition : NoTopicPartitions,
-						backlog, $"topic {topic}'s backlog", logContext);
+					ISet<TopicPartition> partitions = (assignmentChanged || newTopic) &&
+					                                  _assignedPartitionsByTopic.TryGetValue(topic, out HashSet<TopicPartition> assigned)
+						? assigned
+						: NoTopicPartitions;
+					ApplyBackPressure(consumer, topicBackPressureManager, partitions, backlog, $"topic {topic}'s backlog", logContext);
 				}
 			}
 			else
 			{
-				ApplyBackPressure(consumer, _backPressureManager, recordPartition, processor.GetBacklog(), "backlog", logContext);
+				ApplyBackPressure(consumer, _backPressureManager, assignmentChanged ? _assignedPartitions : NoTopicPartitions,
+					processor.GetBacklog(), "backlog", logContext);
 			}
 		}
 
 		private void ApplyBackPressure(IConsumer<string, string> consumer, BackPressureManager backPressureManager,
-			ISet<TopicPartition> topicPartitions, int backlog, string backlogDescription, string logContext)
+			ISet<TopicPartition> assignedPartitions, int backlog, string backlogDescription, string logContext)
 		{
-			BackPressureActions actions = backPressureManager.Update(topicPartitions, backlog);
+			BackPressureActions actions = backPressureManager.Update(assignedPartitions, backlog);
 
 			if (actions.PartitionsToPause.Any())
 			{
@@ -159,7 +205,10 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 			IConsumer<string, string> consumer = null;
 			try
 			{
-				consumer = new ConsumerBuilder<string, string>(_consumerProperties).Build();
+				consumer = new ConsumerBuilder<string, string>(_consumerProperties)
+					.SetPartitionsAssignedHandler((_, partitions) => NotePartitionsAssigned(partitions))
+					.SetPartitionsRevokedHandler((_, partitions) => NotePartitionsRevoked(partitions.Select(p => p.TopicPartition)))
+					.Build();
 				var processor = new KafkaMessageProcessor(_subscriberId, _handler,
 					_loggerFactory.CreateLogger<KafkaMessageProcessor>());
 
@@ -207,7 +256,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 
 								MaybeCommitOffsets(consumer, processor);
 
-								ApplyBackPressure(consumer, processor, record, logContext);
+								ApplyBackPressure(consumer, processor, logContext);
 							}
 							catch (ConsumeException e)
 							{

@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - A Kafka consumer disposed before its consume loop had started was never closed, and disposing it threw
   `TaskCanceledException`
+- Back pressure kept pausing and resuming partitions revoked from the consumer in a rebalance, and didn't pause
+  partitions assigned to it while paused until one of their messages arrived
 
 ## [0.7.0] - 2025-12-05
 
