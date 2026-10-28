@@ -13,9 +13,9 @@ public enum BackPressureScope
 
 	/// <summary>
 	/// Each topic's backlog on its own: once a topic's passes the pause threshold, only that topic's partitions are
-	/// paused, and the consumer's other topics carry on. Use with <c>SwimlanePerTopicPartition</c>, so that each
-	/// topic's messages are on swimlanes of their own; with a shared swimlane, a topic's backlog includes the other
-	/// topics' messages on it.
+	/// paused, and the consumer's other topics carry on. Each topic's messages need swimlanes of their own for this,
+	/// so with this scope <c>KafkaMessageConsumer</c> uses <c>SwimlanePerTopicPartition</c> unless another mapping is
+	/// registered.
 	/// </summary>
 	Topic
 }

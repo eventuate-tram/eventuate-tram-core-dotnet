@@ -52,4 +52,22 @@ public class TopicPartitionToSwimlaneMappingTests
 		// Assert
 		Assert.That(sameSwimlane, Is.EqualTo(swimlane));
 	}
+
+	[Test]
+	public void SwimlanePerTopicPartition_NewTopicPartitions_AreNumberedInTurn()
+	{
+		// Arrange
+		var mapping = new SwimlanePerTopicPartition();
+
+		// Act
+		int swimlane1 = mapping.ToSwimlane(new TopicPartition("topic1", new Partition(5)), "key");
+		int swimlane2 = mapping.ToSwimlane(new TopicPartition("topic2", new Partition(5)), "key");
+
+		// Assert
+		Assert.Multiple(() =>
+		{
+			Assert.That(swimlane1, Is.EqualTo(0), "first topic partition");
+			Assert.That(swimlane2, Is.EqualTo(1), "second topic partition");
+		});
+	}
 }

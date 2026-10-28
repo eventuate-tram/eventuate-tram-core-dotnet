@@ -13,8 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   partition number) is the default, as before; `SwimlanePerTopicPartition` gives each topic partition its own swimlane,
   so one topic's messages don't wait behind another's
 - `BackPressure.Scope` consumer configuration property: `Topic` applies the back pressure thresholds to each topic on its
-  own, pausing and resuming only that topic's partitions. `AllPartitions` (all of the consumer's partitions together) is
-  the default, as before
+  own, pausing and resuming only that topic's partitions, and gives each topic partition its own swimlane unless another
+  mapping is registered. `AllPartitions` (all of the consumer's partitions together) is the default, as before
 
 ### Fixed
 - A Kafka consumer disposed before its consume loop had started was never closed, and disposing it threw

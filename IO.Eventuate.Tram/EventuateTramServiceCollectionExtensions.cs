@@ -96,11 +96,11 @@ namespace IO.Eventuate.Tram
 				var serviceScopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
 				var decoratedMessageHandlerFactory = provider.GetRequiredService<DecoratedMessageHandlerFactory>(); 
 				var jsonMapper = provider.GetRequiredService<IJsonMapper>();
-				var swimlaneMapping = provider.GetService<ITopicPartitionToSwimlaneMapping>();
 
 				IMessageConsumer messageConsumer = new KafkaMessageConsumer(bootstrapServers,
 					consumerConfigurationProperties, decoratedMessageHandlerFactory,
-					loggerFactory, serviceScopeFactory, jsonMapper, swimlaneMapping);
+					loggerFactory, serviceScopeFactory, jsonMapper,
+					() => provider.GetService<ITopicPartitionToSwimlaneMapping>());
 
 				return messageConsumer;
 			});
