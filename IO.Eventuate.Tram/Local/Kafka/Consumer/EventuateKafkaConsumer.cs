@@ -38,6 +38,13 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 
 		private volatile EventuateKafkaConsumerState _state = EventuateKafkaConsumerState.Created;
 
+		private static readonly ISet<TopicPartition> NoTopicPartitions = new HashSet<TopicPartition>();
+
+		// Back pressure state. Only used on the consume loop's thread.
+		private readonly BackPressureManager _backPressureManager;
+		private readonly Dictionary<string, BackPressureManager> _backPressureManagersByTopic = new();
+		private readonly Dictionary<string, int> _backlogsByTopic = new();
+
 		private Task _consumeTask;
 
 		public EventuateKafkaConsumer(string subscriberId,
@@ -54,6 +61,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 			_pollTimeout = eventuateKafkaConsumerConfigurationProperties.PollTimeout;
 			_loggerFactory = loggerFactory;
 			_logger = loggerFactory.CreateLogger<EventuateKafkaConsumer>();
+			_backPressureManager = new BackPressureManager(_backPressureConfig);
 
 			_consumerProperties =
 				ConsumerPropertiesFactory.MakeDefaultConsumerProperties(bootstrapServers, subscriberId)
@@ -84,28 +92,50 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 			}
 		}
 
-		private void ApplyBackPressure(IConsumer<string, string> consumer, BackPressureManager backPressureManager,
-			ConsumeResult<string, string> record, int backlog, string logContext)
+		private void ApplyBackPressure(IConsumer<string, string> consumer, KafkaMessageProcessor processor,
+			ConsumeResult<string, string> record, string logContext)
 		{
-			var topicPartitions = new HashSet<TopicPartition>();
-			if (record != null)
-			{
-				topicPartitions.Add(new TopicPartition(record.Topic, record.Partition));
-			}
+			ISet<TopicPartition> recordPartition = record == null
+				? NoTopicPartitions
+				: new HashSet<TopicPartition> { new TopicPartition(record.Topic, record.Partition) };
 
+			if (_backPressureConfig.Scope == BackPressureScope.Topic)
+			{
+				processor.GetBacklogByTopic(_backlogsByTopic);
+				foreach ((string topic, int backlog) in _backlogsByTopic)
+				{
+					if (!_backPressureManagersByTopic.TryGetValue(topic, out BackPressureManager topicBackPressureManager))
+					{
+						topicBackPressureManager = new BackPressureManager(_backPressureConfig);
+						_backPressureManagersByTopic[topic] = topicBackPressureManager;
+					}
+
+					ApplyBackPressure(consumer, topicBackPressureManager, record?.Topic == topic ? recordPartition : NoTopicPartitions,
+						backlog, $"topic {topic}'s backlog", logContext);
+				}
+			}
+			else
+			{
+				ApplyBackPressure(consumer, _backPressureManager, recordPartition, processor.GetBacklog(), "backlog", logContext);
+			}
+		}
+
+		private void ApplyBackPressure(IConsumer<string, string> consumer, BackPressureManager backPressureManager,
+			ISet<TopicPartition> topicPartitions, int backlog, string backlogDescription, string logContext)
+		{
 			BackPressureActions actions = backPressureManager.Update(topicPartitions, backlog);
 
 			if (actions.PartitionsToPause.Any())
 			{
 				_logger.LogInformation($"{logContext}: subscriber {_subscriberId} pausing " +
-				                       $"{string.Join(", ", actions.PartitionsToPause)} due to backlog {backlog} > {_backPressureConfig.PauseThreshold}");
+				                       $"{string.Join(", ", actions.PartitionsToPause)} due to {backlogDescription} {backlog} > {_backPressureConfig.PauseThreshold}");
 				consumer.Pause(actions.PartitionsToPause);
 			}
 
 			if (actions.PartitionsToResume.Any())
 			{
 				_logger.LogInformation($"{logContext}: subscriber {_subscriberId} resuming " +
-				                       $"{string.Join(", ", actions.PartitionsToResume)} due to backlog {backlog} <= {_backPressureConfig.ResumeThreshold}");
+				                       $"{string.Join(", ", actions.PartitionsToResume)} due to {backlogDescription} {backlog} <= {_backPressureConfig.ResumeThreshold}");
 				consumer.Resume(actions.PartitionsToResume);
 			}
 		}
@@ -132,9 +162,6 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 				consumer = new ConsumerBuilder<string, string>(_consumerProperties).Build();
 				var processor = new KafkaMessageProcessor(_subscriberId, _handler,
 					_loggerFactory.CreateLogger<KafkaMessageProcessor>());
-				var backPressureManager = new BackPressureManager(_backPressureConfig);
-				// Only used for BackPressureScope.Topic
-				var backPressureManagersByTopic = new Dictionary<string, BackPressureManager>();
 
 				using (IAdminClient adminClient = new DependentAdminClientBuilder(consumer.Handle).Build())
 				{
@@ -180,24 +207,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 
 								MaybeCommitOffsets(consumer, processor);
 
-								if (_backPressureConfig.Scope == BackPressureScope.Topic)
-								{
-									foreach (string topic in processor.GetTopics())
-									{
-										if (!backPressureManagersByTopic.TryGetValue(topic, out BackPressureManager topicBackPressureManager))
-										{
-											topicBackPressureManager = new BackPressureManager(_backPressureConfig);
-											backPressureManagersByTopic[topic] = topicBackPressureManager;
-										}
-
-										ApplyBackPressure(consumer, topicBackPressureManager, record?.Topic == topic ? record : null,
-											processor.GetBacklog(topic), logContext);
-									}
-								}
-								else
-								{
-									ApplyBackPressure(consumer, backPressureManager, record, processor.GetBacklog(), logContext);
-								}
+								ApplyBackPressure(consumer, processor, record, logContext);
 							}
 							catch (ConsumeException e)
 							{

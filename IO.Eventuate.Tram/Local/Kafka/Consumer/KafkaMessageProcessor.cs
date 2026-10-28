@@ -72,7 +72,7 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 				_consumerBacklogs.Add(consumerBacklog);
 				if (!_consumerBacklogsByTopic.TryGetValue(record.Topic, out HashSet<IMessageConsumerBacklog> topicBacklogs))
 				{
-					topicBacklogs = new HashSet<IMessageConsumerBacklog>();
+					topicBacklogs = [];
 					_consumerBacklogsByTopic[record.Topic] = topicBacklogs;
 				}
 
@@ -133,21 +133,22 @@ namespace IO.Eventuate.Tram.Local.Kafka.Consumer
 		}
 
 		/// <summary>
-		/// The backlog of the swimlanes the topic's records were dispatched to
+		/// Fills <paramref name="backlogs"/> with the backlog of each topic records have been processed from, that is
+		/// of the swimlanes its records were dispatched to. It's cleared first, so the caller can reuse one dictionary.
 		/// </summary>
-		public int GetBacklog(string topic)
+		public void GetBacklogByTopic(IDictionary<string, int> backlogs)
 		{
-			return _consumerBacklogsByTopic.TryGetValue(topic, out HashSet<IMessageConsumerBacklog> topicBacklogs)
-				? topicBacklogs.Sum(cb => cb.Size())
-				: 0;
-		}
+			backlogs.Clear();
+			foreach ((string topic, HashSet<IMessageConsumerBacklog> topicBacklogs) in _consumerBacklogsByTopic)
+			{
+				int backlog = 0;
+				foreach (IMessageConsumerBacklog consumerBacklog in topicBacklogs)
+				{
+					backlog += consumerBacklog.Size();
+				}
 
-		/// <summary>
-		/// The topics that records have been processed from
-		/// </summary>
-		public IReadOnlyCollection<string> GetTopics()
-		{
-			return _consumerBacklogsByTopic.Keys;
+				backlogs[topic] = backlog;
+			}
 		}
 	}
 }

@@ -26,7 +26,7 @@ public class KafkaMessageProcessorTests
 	};
 
 	[Test]
-	public async Task GetBacklog_ForTopic_CountsOnlyThatTopicsSwimlanes()
+	public async Task GetBacklogByTopic_CountsOnlyEachTopicsSwimlanes()
 	{
 		// Arrange
 		IMessageConsumerBacklog topic1Partition0 = Backlog(3);
@@ -49,13 +49,12 @@ public class KafkaMessageProcessorTests
 		await processor.ProcessAsync(Record("topic2", 0, 1));
 
 		// Assert
+		var backlogByTopic = new Dictionary<string, int> { ["stale"] = 99 };
+		processor.GetBacklogByTopic(backlogByTopic);
 		Assert.Multiple(() =>
 		{
-			Assert.That(processor.GetBacklog("topic1"), Is.EqualTo(7), "topic1 backlog");
-			Assert.That(processor.GetBacklog("topic2"), Is.EqualTo(20), "topic2 backlog");
-			Assert.That(processor.GetBacklog("topic3"), Is.EqualTo(0), "topic3 backlog");
+			Assert.That(backlogByTopic, Is.EquivalentTo(new Dictionary<string, int> { ["topic1"] = 7, ["topic2"] = 20 }), "backlog by topic");
 			Assert.That(processor.GetBacklog(), Is.EqualTo(27), "total backlog");
-			Assert.That(processor.GetTopics(), Is.EquivalentTo(new[] { "topic1", "topic2" }), "topics");
 		});
 	}
 }
